@@ -1,0 +1,11 @@
+Hardware Shop Test Users
+========================
+
+User 1:
+Email: test@example.com
+Password: admin
+Role: Admin
+Shop: Test Hardware Shop
+
+Note: SSO (Google) can be used, but require manual setup in Supabase Dashboard.
+The email/password login above is ready for testing.
