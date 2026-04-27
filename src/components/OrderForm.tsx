@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { interpolateMessage } from '@/lib/i18n/translate';
+import CustomerSearch from './CustomerSearch';
 import { 
   User, 
   Package, 
@@ -71,7 +72,7 @@ const mapOrderHistoryEntry = (entry: OrderHistoryResponse): OrderHistoryEntry =>
 
 export default function OrderForm({ 
   products, 
-  customers,
+  customers: initialCustomers,
   units,
 }: { 
   products: Product[], 
@@ -80,6 +81,7 @@ export default function OrderForm({
 }) {
   const router = useRouter();
   const { locale, t } = useI18n();
+  const [customers, setCustomers] = useState(initialCustomers);
   const [customerId, setCustomerId] = useState('');
   const [items, setItems] = useState<OrderItem[]>([]);
   const [deposit, setDeposit] = useState(0);
@@ -192,8 +194,9 @@ export default function OrderForm({
         const errorData = await response.json();
         toast.error(`${t('orderCreateFailed')}: ${errorData.error || t('genericError')}`);
       }
-    } catch (err: any) {
-      toast.error(`${t('genericError')}: ${err.message}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('genericError');
+      toast.error(`${t('genericError')}: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -220,6 +223,19 @@ export default function OrderForm({
     router.push(`/orders/${orderId}`);
   };
 
+  const handleCustomerCreated = (customer: Customer) => {
+    setCustomers((currentCustomers) => {
+      const exists = currentCustomers.some((entry) => entry.id === customer.id);
+
+      if (exists) {
+        return currentCustomers;
+      }
+
+      return [...currentCustomers, customer].sort((a, b) => a.name.localeCompare(b.name));
+    });
+    setCustomerId(customer.id);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-8 max-w-6xl mx-auto">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -237,21 +253,12 @@ export default function OrderForm({
             <CardContent className="p-8 space-y-6">
               <div className="space-y-3">
                 <Label className="text-sm font-bold text-[#475569]">{t('searchCustomer')}</Label>
-                <Select onValueChange={setCustomerId} value={customerId}>
-                  <SelectTrigger className="h-12 rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10">
-                    <SelectValue placeholder={t('selectFromDirectory')} />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-[#E2E8F0]">
-                    {customers.map(c => (
-                      <SelectItem key={c.id} value={c.id} className="cursor-pointer py-3">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-[#064E3B]">{c.name}</span>
-                          <span className="text-xs text-[#64748B]">{c.phone}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CustomerSearch 
+                  customers={customers} 
+                  selectedId={customerId} 
+                  onSelect={(c) => setCustomerId(c.id)}
+                  onCreate={handleCustomerCreated}
+                />
               </div>
               
               {currentCustomer && (

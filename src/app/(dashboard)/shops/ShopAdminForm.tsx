@@ -9,13 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { createClient } from '@/lib/supabase/client';
-import { Store, Upload, Save, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Store, Upload, Save, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { Shop } from '@/types';
+import { uploadFile } from '@/lib/supabase/storage';
 
 export default function ShopAdminForm({ shop }: { shop: Shop }) {
   const router = useRouter();
   const { t } = useI18n();
-  const supabase = createClient();
   
   const [name, setName] = useState(shop.name);
   const [phone, setPhone] = useState(shop.phone || '');
@@ -31,27 +31,33 @@ export default function ShopAdminForm({ shop }: { shop: Shop }) {
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${shop.id}-${Math.random()}.${fileExt}`;
+      const fileName = `${shop.id}-${Date.now()}.${fileExt}`;
       const filePath = `logos/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('shop-logos')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('shop-logos')
-        .getPublicUrl(filePath);
-
+      const publicUrl = await uploadFile('shop-logos', filePath, file);
       setLogoUrl(publicUrl);
+      
+      // Automatically update the database record with the new logo URL
+      const response = await fetch('/api/shops', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone, address, logo_url: publicUrl }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update shop logo URL in database');
+
       toast.success(t('logoUploaded'));
+      router.refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       toast.error(`${t('logoUploadFailed')}: ${message}`);
     } finally {
       setUploading(false);
     }
+  };
+
+  const removeLogo = () => {
+    setLogoUrl('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -132,6 +138,18 @@ export default function ShopAdminForm({ shop }: { shop: Shop }) {
                     </div>
                   )}
                 </div>
+                {logoUrl && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={removeLogo}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Remove Logo
+                  </Button>
+                )}
               </div>
 
               {/* Shop Info Section */}

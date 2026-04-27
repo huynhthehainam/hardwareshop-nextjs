@@ -6,14 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { createClient } from '@/lib/supabase/client';
-import { Product } from '@/types';
+import { uploadFile } from '@/lib/supabase/storage';
 import { Upload, Package, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Product } from '@/types';
 import { useI18n } from '@/components/i18n/I18nProvider';
 
 export default function ProductImageUpload({ products }: { products: Product[] }) {
   const { t } = useI18n();
-  const supabase = createClient();
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   
@@ -29,19 +28,10 @@ export default function ProductImageUpload({ products }: { products: Product[] }
       const fileName = `${selectedProductId}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // 1. Upload to the new bucket
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, file);
+      // 1. Upload to the new bucket using utility
+      const publicUrl = await uploadFile('product-images', filePath, file);
 
-      if (uploadError) throw uploadError;
-
-      // 2. Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
-
-      // 3. Update product record
+      // 2. Update product record
       const response = await fetch(`/api/products/${selectedProductId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -52,8 +42,9 @@ export default function ProductImageUpload({ products }: { products: Product[] }
 
       toast.success('Product image uploaded successfully');
       window.location.reload(); // Simple way to refresh the product list
-    } catch (error: any) {
-      toast.error(`Upload failed: ${error.message}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Upload failed: ${message}`);
     } finally {
       setUploading(false);
     }

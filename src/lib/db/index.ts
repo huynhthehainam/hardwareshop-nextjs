@@ -17,9 +17,45 @@ export async function getProducts() {
 
 export async function getCustomers() {
   const supabase = await createClient();
-  const { data, error } = await supabase.from('customer').select('*');
+  const { data, error } = await supabase
+    .from('customer')
+    .select('*')
+    .order('name', { ascending: true });
   if (error) throw error;
   return data as Customer[];
+}
+
+export async function getCustomer(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('customer')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data as Customer;
+}
+
+export async function getCustomerDebtHistory(customerId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('customer_debt_history')
+    .select('*')
+    .eq('customer_id', customerId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as CustomerDebtHistory[];
+}
+
+export async function getCustomerOrders(customerId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('order')
+    .select('*')
+    .eq('customer_id', customerId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as Order[];
 }
 
 export async function getUnits() {
