@@ -28,6 +28,14 @@ export async function POST(request: Request) {
     const body = (await request.json()) as OrderRequestBody;
     const { customerId, items, deposit, totalCost } = body;
 
+    // Validate product IDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    for (const item of items) {
+      if (!item.productId || !uuidRegex.test(item.productId)) {
+        return NextResponse.json({ error: `Invalid product ID: ${item.productId || 'empty'}` }, { status: 400 });
+      }
+    }
+
     // Get user's shop
     const { data: userShop } = await supabase
       .from('user_shops')
@@ -51,15 +59,17 @@ export async function POST(request: Request) {
       product_id: item.productId,
       quantity: item.quantity,
       price: item.price,
-      unit_id: item.unitId || null, // Optional for now
+      unit_id: (item.unitId && item.unitId.trim() !== '') ? item.unitId : null,
     }));
 
     const result = await createOrder(order, details);
 
     return NextResponse.json(result);
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error('API Order Error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Extract more meaningful error message if available from Supabase/Postgres
+    const message = error.message || error.details || 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

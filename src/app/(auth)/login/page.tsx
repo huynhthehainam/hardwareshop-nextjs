@@ -63,6 +63,9 @@ export default function LoginPage() {
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-5 pt-4">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Temporary login password for all accounts: <span className="font-bold">Admin@123</span>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-semibold text-[#475569] flex items-center">
                 <Mail className="w-4 h-4 mr-2" />

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { getProducts } from '@/lib/db';
+import { getProducts, getShop } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -44,6 +44,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     notFound();
   }
 
+  const shop = order.shop_id ? await getShop(order.shop_id) : null;
+
   const debtImpact = order.total_cost - order.deposit;
   const customerDebtAfterOrder = order.debt_after_order ?? debtImpact;
 
@@ -78,6 +80,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           details={details || []} 
           customer={order.customer} 
           products={products} 
+          shop={shop}
         />
       </div>
 

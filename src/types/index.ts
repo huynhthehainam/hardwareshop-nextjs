@@ -12,6 +12,9 @@ export interface User {
 export interface Shop {
   id: string;
   name: string;
+  phone?: string | null;
+  address?: string | null;
+  logo_url?: string | null;
 }
 
 export interface UserShop {
@@ -34,6 +37,7 @@ export interface Product {
   name: string;
   default_unit_id: string | null;
   default_price: number;
+  image_url?: string | null;
 }
 
 export interface Customer {

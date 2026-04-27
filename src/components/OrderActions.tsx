@@ -2,9 +2,8 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import OrderPDF from './OrderPDF';
-import { Order, OrderDetail, Product, Customer } from '@/types';
+import { generateOrderPdf } from './OrderPDF';
+import { Order, OrderDetail, Product, Customer, Shop } from '@/types';
 import { useSyncExternalStore } from 'react';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { useRouter } from 'next/navigation';
@@ -16,19 +15,42 @@ export default function OrderActions({
   order, 
   details, 
   customer, 
-  products 
+  products,
+  shop
 }: { 
   order: Order, 
   details: OrderDetail[], 
   customer: Customer, 
-  products: Product[] 
+  products: Product[],
+  shop: Shop | null
 }) {
   const { locale, t } = useI18n();
   const router = useRouter();
   const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [isReverting, setIsReverting] = React.useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = React.useState(false);
 
   if (!isClient) return <Button disabled>{t('loadingPdf')}</Button>;
+
+  const handleDownloadPdf = async () => {
+    setIsGeneratingPdf(true);
+
+    try {
+      await generateOrderPdf({
+        order,
+        details,
+        customer,
+        products,
+        locale,
+        shop,
+      });
+    } catch (error) {
+      console.error('Failed to generate invoice PDF', error);
+      toast.error('Failed to generate PDF');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   const handleRevert = async () => {
     const confirmed = window.confirm(`${t('revertOrder')}?`);
@@ -62,26 +84,14 @@ export default function OrderActions({
   };
 
   return (
-    <div className="flex space-x-2">
-      <PDFDownloadLink
-        document={<OrderPDF order={order} details={details} customer={customer} products={products} locale={locale} />}
-        fileName={`invoice-${order.id.slice(0, 8)}.pdf`}
-      >
-        {({ loading }) => (
-          <Button
-            variant="outline"
-            disabled={loading || Boolean(order.deleted_at)}
-            className="rounded-xl border-[#D1FAE5] bg-white text-[#047857] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#059669] hover:bg-[#ECFDF5] hover:text-[#065F46] hover:shadow-md"
-          >
-            {loading ? t('generatingPdf') : t('downloadInvoice')}
-          </Button>
-        )}
-      </PDFDownloadLink>
+    <div className="flex space-x-2" >
       <Button
-        onClick={() => window.print()}
-        className="rounded-xl bg-[#059669] text-white shadow-md shadow-emerald-700/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#047857] hover:shadow-lg hover:shadow-emerald-700/30"
+        variant="outline"
+        disabled={isGeneratingPdf || Boolean(order.deleted_at)}
+        onClick={handleDownloadPdf}
+        className="rounded-xl border-[#D1FAE5] bg-white text-[#047857] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#059669] hover:bg-[#ECFDF5] hover:text-[#065F46] hover:shadow-md"
       >
-        {t('printPage')}
+        {isGeneratingPdf ? t('generatingPdf') : t('downloadInvoice')}
       </Button>
       <Button
         variant="destructive"

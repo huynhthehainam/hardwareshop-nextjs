@@ -112,6 +112,9 @@ export const messages = {
     downloadInvoice: "Download Invoice",
     printPage: "Print Page",
     invoiceTitle: "INVOICE",
+    billTo: "Bill To",
+    amountDue: "Amount Due",
+    thankYouForBusiness: "Thank you for your business!",
 
     orderDetailsTitle: "Order Details",
     orderDetailsSubtitle: "Review the complete breakdown of this transaction.",
@@ -253,6 +256,9 @@ export const messages = {
     downloadInvoice: "Tải hóa đơn",
     printPage: "In trang",
     invoiceTitle: "HÓA ĐƠN",
+    billTo: "Người nhận",
+    amountDue: "Còn nợ",
+    thankYouForBusiness: "Cảm ơn quý khách đã tin tưởng!",
 
     orderDetailsTitle: "Chi tiết đơn hàng",
     orderDetailsSubtitle: "Xem đầy đủ thông tin của giao dịch này.",
@@ -282,6 +288,19 @@ export const messages = {
     orderCreated: "Tạo đơn hàng thành công",
     orderCreateFailed: "Tạo đơn hàng thất bại",
     genericError: "Đã xảy ra lỗi",
+
+    shopAdminTitle: "Quản lý cửa hàng",
+    shopAdminSubtitle: "Quản lý thông tin và thương hiệu cửa hàng",
+    shopName: "Tên cửa hàng",
+    shopAddress: "Địa chỉ",
+    shopPhone: "Số điện thoại",
+    shopLogo: "Logo cửa hàng",
+    uploadLogo: "Tải lên logo",
+    updateShopInfo: "Cập nhật thông tin cửa hàng",
+    shopInfoUpdated: "Cập nhật thông tin cửa hàng thành công",
+    shopInfoUpdateFailed: "Cập nhật thông tin cửa hàng thất bại",
+    logoUploaded: "Tải lên logo thành công",
+    logoUploadFailed: "Tải lên logo thất bại",
   },
 } as const satisfies Record<Locale, Record<string, string>>
 

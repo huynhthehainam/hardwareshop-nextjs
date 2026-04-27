@@ -189,10 +189,11 @@ export default function OrderForm({
         toast.success(t('orderCreated'));
         router.push('/orders');
       } else {
-        toast.error(t('orderCreateFailed'));
+        const errorData = await response.json();
+        toast.error(`${t('orderCreateFailed')}: ${errorData.error || t('genericError')}`);
       }
-    } catch {
-      toast.error(t('genericError'));
+    } catch (err: any) {
+      toast.error(`${t('genericError')}: ${err.message}`);
     } finally {
       setLoading(false);
     }

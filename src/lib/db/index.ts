@@ -32,6 +32,13 @@ export async function getUnits() {
   return data as Unit[];
 }
 
+export async function getShop(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('shops').select('*').eq('id', id).single();
+  if (error) throw error;
+  return data as Shop;
+}
+
 export async function getOrders(shopId?: string) {
   const supabase = await createClient();
   let query = supabase.from('order').select('*, customer:customer_id(*)');
@@ -46,63 +53,22 @@ export async function getOrders(shopId?: string) {
 export async function createOrder(order: Partial<Order>, details: Partial<OrderDetail>[]) {
   const supabase = await createClient();
   
-  // Start a transaction-like process (Supabase doesn't have multi-table transactions in JS client easily without RPC)
-  // Ideally use a Postgres function (RPC) for this to ensure atomicity.
-  const debtDelta = Number(order.total_cost ?? 0) - Number(order.deposit ?? 0);
-  let nextDebt: number | null = null;
-
-  if (order.customer_id && debtDelta !== 0) {
-    const { data: customerData, error: customerError } = await supabase
-      .from('customer')
-      .select('debt')
-      .eq('id', order.customer_id)
-      .single();
-
-    if (customerError) throw customerError;
-
-    nextDebt = Number(customerData?.debt ?? 0) + debtDelta;
-  }
-  
-  const { data: orderData, error: orderError } = await supabase
-    .from('order')
-    .insert({
-      ...order,
-      debt_after_order: nextDebt,
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('create_order', {
+    p_shop_id: order.shop_id,
+    p_customer_id: order.customer_id,
+    p_deposit: order.deposit,
+    p_total_cost: order.total_cost,
+    p_created_by: order.created_by,
+    p_items: details.map(d => ({
+      product_id: d.product_id,
+      quantity: d.quantity,
+      price: d.price,
+      unit_id: d.unit_id
+    }))
+  });
     
-  if (orderError) throw orderError;
-  
-  const orderDetailsWithId = details.map(d => ({ ...d, order_id: orderData.id }));
-  
-  const { error: detailsError } = await supabase
-    .from('order_detail')
-    .insert(orderDetailsWithId);
-    
-  if (detailsError) throw detailsError;
-
-  if (order.customer_id && debtDelta !== 0) {
-    const { error: updateCustomerError } = await supabase
-      .from('customer')
-      .update({ debt: nextDebt })
-      .eq('id', order.customer_id);
-
-    if (updateCustomerError) throw updateCustomerError;
-
-    const { error: historyError } = await supabase
-      .from('customer_debt_history')
-      .insert({
-        customer_id: order.customer_id,
-        change_amount: debtDelta,
-        reason_key: 'order_created',
-        reason_params: { orderId: orderData.id },
-      });
-
-    if (historyError) throw historyError;
-  }
-  
-  return orderData;
+  if (error) throw error;
+  return data;
 }
 
 export async function revertOrder(orderId: string, deletedBy: string) {

@@ -93,11 +93,18 @@ export default async function OrdersPage() {
                   </TableRow>
                 ) : (
                   orders.map((order) => (
-                    <TableRow key={order.id} className="hover:bg-[#F8FAFC] border-b border-[#F1F5F9] transition-colors group">
+                    <TableRow key={order.id} className={`hover:bg-[#F8FAFC] border-b border-[#F1F5F9] transition-colors group ${order.deleted_at ? 'opacity-60 bg-slate-50' : ''}`}>
                       <TableCell className="py-4">
-                        <Badge variant="outline" className="bg-[#ECFDF5] text-[#059669] border-none font-mono font-bold px-3 py-1 rounded-lg">
-                          #{order.id.slice(0, 8).toUpperCase()}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="outline" className={`${order.deleted_at ? 'bg-slate-200 text-slate-500' : 'bg-[#ECFDF5] text-[#059669]'} border-none font-mono font-bold px-3 py-1 rounded-lg w-fit`}>
+                            #{order.id.slice(0, 8).toUpperCase()}
+                          </Badge>
+                          {order.deleted_at && (
+                            <Badge variant="destructive" className="text-[10px] py-0 px-2 w-fit">
+                              {t('reverted')}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="py-4">
                         <div className="flex items-center">
