@@ -32,6 +32,8 @@ You are a senior fullstack engineer generating a production-ready Next.js app.
 - All auth logic in `/lib/auth`
 - No direct Supabase calls inside components
 - Use hooks only for UI logic
+- Keep app-facing objects in camelCase. When Supabase returns snake_case columns, access them with bracket notation at the boundary or map them to camelCase before they reach rendering/business logic.
+- Preserve Vietnamese UI copy with full diacritics in source files. Do not transliterate Vietnamese to ASCII placeholders when adding or editing labels, messages, or content.
 
 ## Coding Style
 

@@ -7,3 +7,12 @@ export function createTranslator(locale: Locale) {
   }
 }
 
+export function interpolateMessage(
+  template: string,
+  params: Record<string, string | number | boolean | null | undefined>
+) {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => {
+    const value = params[key]
+    return value == null ? `{${key}}` : String(value)
+  })
+}

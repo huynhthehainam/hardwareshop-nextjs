@@ -2,6 +2,20 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { createOrder } from '@/lib/db';
 
+interface OrderRequestItem {
+  productId: string;
+  quantity: number;
+  unitId?: string;
+  price: number;
+}
+
+interface OrderRequestBody {
+  customerId: string;
+  items: OrderRequestItem[];
+  deposit: number;
+  totalCost: number;
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -11,7 +25,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as OrderRequestBody;
     const { customerId, items, deposit, totalCost } = body;
 
     // Get user's shop
@@ -33,7 +47,7 @@ export async function POST(request: Request) {
       created_by: user.id,
     };
 
-    const details = items.map((item: any) => ({
+    const details = items.map((item) => ({
       product_id: item.productId,
       quantity: item.quantity,
       price: item.price,
@@ -43,8 +57,9 @@ export async function POST(request: Request) {
     const result = await createOrder(order, details);
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('API Order Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

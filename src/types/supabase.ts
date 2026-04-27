@@ -35,11 +35,49 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_debt_history: {
+        Row: {
+          change_amount: number
+          created_at: string
+          customer_id: string
+          id: string
+          reason_key: string
+          reason_params: Json | null
+        }
+        Insert: {
+          change_amount: number
+          created_at?: string
+          customer_id: string
+          id?: string
+          reason_key: string
+          reason_params?: Json | null
+        }
+        Update: {
+          change_amount?: number
+          created_at?: string
+          customer_id?: string
+          id?: string
+          reason_key?: string
+          reason_params?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_debt_history_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order: {
         Row: {
           created_at: string | null
           created_by: string | null
           customer_id: string | null
+          debt_after_order: number | null
+          deleted_at: string | null
+          deleted_by: string | null
           deposit: number | null
           id: string
           shop_id: string | null
@@ -49,6 +87,9 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           customer_id?: string | null
+          debt_after_order?: number | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deposit?: number | null
           id?: string
           shop_id?: string | null
@@ -58,6 +99,9 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           customer_id?: string | null
+          debt_after_order?: number | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deposit?: number | null
           id?: string
           shop_id?: string | null
@@ -131,16 +175,19 @@ export type Database = {
       }
       product: {
         Row: {
+          default_price: number
           default_unit_id: string | null
           id: string
           name: string
         }
         Insert: {
+          default_price?: number
           default_unit_id?: string | null
           id?: string
           name: string
         }
         Update: {
+          default_price?: number
           default_unit_id?: string | null
           id?: string
           name?: string
@@ -179,6 +226,7 @@ export type Database = {
           id: string
           is_main: boolean | null
           name: string
+          name_vi: string | null
           type: string | null
         }
         Insert: {
@@ -186,6 +234,7 @@ export type Database = {
           id?: string
           is_main?: boolean | null
           name: string
+          name_vi?: string | null
           type?: string | null
         }
         Update: {
@@ -193,6 +242,7 @@ export type Database = {
           id?: string
           is_main?: boolean | null
           name?: string
+          name_vi?: string | null
           type?: string | null
         }
         Relationships: []

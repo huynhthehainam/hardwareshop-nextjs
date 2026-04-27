@@ -1,10 +1,20 @@
 'use client';
 
-import { Document, Page, Text, View, StyleSheet, PDFViewer } from '@react-pdf/renderer';
+import { Document, Font, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import { Order, OrderDetail, Product, Customer } from '@/types';
+import { createTranslator } from '@/lib/i18n/translate';
+import type { Locale } from '@/lib/i18n/config';
+
+Font.register({
+  family: 'BeVietnamPro',
+  fonts: [
+    { src: '/fonts/BeVietnamPro-Regular.ttf', fontWeight: 'normal' },
+    { src: '/fonts/BeVietnamPro-Bold.ttf', fontWeight: 'bold' },
+  ],
+});
 
 const styles = StyleSheet.create({
-  page: { padding: 30, fontSize: 12 },
+  page: { padding: 30, fontSize: 12, fontFamily: 'BeVietnamPro' },
   header: { marginBottom: 20, textAlign: 'center' },
   title: { fontSize: 24, fontWeight: 'bold' },
   section: { marginBottom: 10 },
@@ -28,48 +38,53 @@ export default function OrderPDF({
   order, 
   details, 
   customer,
-  products
+  products,
+  locale,
 }: { 
   order: Order, 
   details: OrderDetail[], 
   customer: Customer,
-  products: Product[]
+  products: Product[],
+  locale: Locale,
 }) {
+  const t = createTranslator(locale);
+  const dateLocale = locale === 'vi' ? 'vi-VN' : 'en-US';
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.title}>INVOICE</Text>
-          <Text>Order #{order.id.slice(0, 8)}</Text>
+          <Text style={styles.title}>{t('invoiceTitle')}</Text>
+          <Text>{t('orderLabel')} #{order.id.slice(0, 8)}</Text>
         </View>
 
         <View style={styles.section}>
           <View style={styles.row}>
-            <Text style={styles.label}>Customer:</Text>
+            <Text style={styles.label}>{t('customer')}:</Text>
             <Text style={styles.value}>{customer.name}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Phone:</Text>
+            <Text style={styles.label}>{t('phone')}:</Text>
             <Text style={styles.value}>{customer.phone}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Date:</Text>
-            <Text style={styles.value}>{new Date(order.created_at).toLocaleDateString()}</Text>
+            <Text style={styles.label}>{t('date')}:</Text>
+            <Text style={styles.value}>{new Date(order.created_at).toLocaleDateString(dateLocale)}</Text>
           </View>
         </View>
 
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={styles.col1}>Product</Text>
-            <Text style={styles.col2}>Qty</Text>
-            <Text style={styles.col3}>Price</Text>
-            <Text style={styles.col4}>Total</Text>
+            <Text style={styles.col1}>{t('product')}</Text>
+            <Text style={styles.col2}>{t('qty')}</Text>
+            <Text style={styles.col3}>{t('price')}</Text>
+            <Text style={styles.col4}>{t('total')}</Text>
           </View>
           {details.map((detail, i) => {
             const product = products.find(p => p.id === detail.product_id);
             return (
               <View key={i} style={styles.tableRow}>
-                <Text style={styles.col1}>{product?.name || 'Unknown'}</Text>
+                <Text style={styles.col1}>{product?.name || t('unknownProduct')}</Text>
                 <Text style={styles.col2}>{detail.quantity}</Text>
                 <Text style={styles.col3}>${detail.price.toLocaleString()}</Text>
                 <Text style={styles.col4}>${(detail.quantity * detail.price).toLocaleString()}</Text>
@@ -80,15 +95,15 @@ export default function OrderPDF({
 
         <View style={styles.summary}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total Cost:</Text>
+            <Text style={styles.summaryLabel}>{t('totalCost')}:</Text>
             <Text style={styles.summaryValue}>${order.total_cost.toLocaleString()}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Deposit:</Text>
+            <Text style={styles.summaryLabel}>{t('depositLabel')}:</Text>
             <Text style={styles.summaryValue}>${order.deposit.toLocaleString()}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Net Debt Change:</Text>
+            <Text style={styles.summaryLabel}>{t('netDebtChange')}:</Text>
             <Text style={styles.summaryValue}>${(order.total_cost - order.deposit).toLocaleString()}</Text>
           </View>
         </View>

@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Product, Customer, Unit } from '@/types';
+import { Product, Customer, CustomerDebtHistory, Order, Unit } from '@/types';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import { interpolateMessage } from '@/lib/i18n/translate';
 import { 
   User, 
   Package, 
@@ -19,7 +21,7 @@ import {
   Calculator, 
   CreditCard,
   CheckCircle2,
-  AlertCircle
+  History
 } from 'lucide-react';
 
 interface OrderItem {
@@ -29,19 +31,65 @@ interface OrderItem {
   price: number;
 }
 
+type OrderItemFieldValue = OrderItem[keyof OrderItem];
+type DebtHistoryResponse = CustomerDebtHistory;
+type OrderHistoryResponse = Pick<Order, 'id' | 'customer_id' | 'total_cost' | 'deposit' | 'created_at'>;
+
+interface DebtHistoryEntry {
+  id: string;
+  customerId: string;
+  changeAmount: number;
+  reasonKey: string;
+  reasonParams?: Record<string, string | number | boolean | null> | null;
+  createdAt: string;
+}
+
+interface OrderHistoryEntry {
+  id: string;
+  customerId: string;
+  totalCost: number;
+  deposit: number;
+  createdAt: string;
+}
+
+const mapDebtHistoryEntry = (entry: DebtHistoryResponse): DebtHistoryEntry => ({
+  id: entry.id,
+  customerId: entry['customer_id'],
+  changeAmount: entry['change_amount'],
+  reasonKey: entry['reason_key'],
+  reasonParams: entry['reason_params'],
+  createdAt: entry['created_at'],
+});
+
+const mapOrderHistoryEntry = (entry: OrderHistoryResponse): OrderHistoryEntry => ({
+  id: entry.id,
+  customerId: entry['customer_id'],
+  totalCost: entry['total_cost'],
+  deposit: entry.deposit,
+  createdAt: entry['created_at'],
+});
+
 export default function OrderForm({ 
   products, 
-  customers 
+  customers,
+  units,
 }: { 
   products: Product[], 
-  customers: Customer[] 
+  customers: Customer[],
+  units: Unit[],
 }) {
   const router = useRouter();
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [customerId, setCustomerId] = useState('');
   const [items, setItems] = useState<OrderItem[]>([]);
   const [deposit, setDeposit] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [debtHistoryOpen, setDebtHistoryOpen] = useState(false);
+  const [debtHistoryLoading, setDebtHistoryLoading] = useState(false);
+  const [debtHistory, setDebtHistory] = useState<DebtHistoryEntry[]>([]);
+  const [orderHistoryOpen, setOrderHistoryOpen] = useState(false);
+  const [orderHistoryLoading, setOrderHistoryLoading] = useState(false);
+  const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([]);
 
   const addItem = () => {
     setItems([...items, { productId: '', quantity: 1, unitId: '', price: 0 }]);
@@ -51,9 +99,29 @@ export default function OrderForm({
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const updateItem = (index: number, field: keyof OrderItem, value: any) => {
+  const updateItem = (index: number, field: keyof OrderItem, value: OrderItemFieldValue) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
+    setItems(newItems);
+  };
+
+  const getUnitLabel = (unit: Unit) => {
+    if (locale === 'vi' && unit.name_vi?.trim()) {
+      return unit.name_vi;
+    }
+
+    return unit.name;
+  };
+
+  const handleProductChange = (index: number, productId: string) => {
+    const product = products.find((candidate) => candidate.id === productId);
+    const newItems = [...items];
+    newItems[index] = {
+      ...newItems[index],
+      productId,
+      unitId: product?.default_unit_id ?? newItems[index]?.unitId ?? '',
+      price: product?.default_price ?? newItems[index]?.price ?? 0,
+    };
     setItems(newItems);
   };
 
@@ -61,6 +129,48 @@ export default function OrderForm({
   const currentCustomer = customers.find(c => c.id === customerId);
   const oldDebt = currentCustomer?.debt || 0;
   const newDebt = oldDebt + totalCost - deposit;
+
+  useEffect(() => {
+    if (!debtHistoryOpen || !customerId) return;
+
+    const loadDebtHistory = async () => {
+      setDebtHistoryLoading(true);
+
+      try {
+        const response = await fetch(`/api/customers/${customerId}/debt-history`);
+        if (!response.ok) throw new Error('Failed to load debt history');
+        const payload = (await response.json()) as { history: DebtHistoryResponse[] };
+        setDebtHistory(payload.history.map(mapDebtHistoryEntry));
+      } catch {
+        toast.error(t('genericError'));
+      } finally {
+        setDebtHistoryLoading(false);
+      }
+    };
+
+    void loadDebtHistory();
+  }, [customerId, debtHistoryOpen, t]);
+
+  useEffect(() => {
+    if (!orderHistoryOpen || !customerId) return;
+
+    const loadOrderHistory = async () => {
+      setOrderHistoryLoading(true);
+
+      try {
+        const response = await fetch(`/api/customers/${customerId}/orders`);
+        if (!response.ok) throw new Error('Failed to load order history');
+        const payload = (await response.json()) as { history: OrderHistoryResponse[] };
+        setOrderHistory(payload.history.map(mapOrderHistoryEntry));
+      } catch {
+        toast.error(t('genericError'));
+      } finally {
+        setOrderHistoryLoading(false);
+      }
+    };
+
+    void loadOrderHistory();
+  }, [customerId, orderHistoryOpen, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,11 +191,32 @@ export default function OrderForm({
       } else {
         toast.error(t('orderCreateFailed'));
       }
-    } catch (error) {
+    } catch {
       toast.error(t('genericError'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const getDebtReason = (entry: DebtHistoryEntry) => {
+    if (entry.reasonKey === 'order_created') {
+      return interpolateMessage(t('debtReasonOrderCreated'), {
+        orderId: entry.reasonParams?.orderId,
+      });
+    }
+
+    if (entry.reasonKey === 'order_reverted') {
+      return interpolateMessage(t('debtReasonOrderReverted'), {
+        orderId: entry.reasonParams?.orderId,
+      });
+    }
+
+    return t('debtReasonFallback');
+  };
+
+  const handleViewOrderDetails = (orderId: string) => {
+    setOrderHistoryOpen(false);
+    router.push(`/orders/${orderId}`);
   };
 
   return (
@@ -123,14 +254,36 @@ export default function OrderForm({
               </div>
               
               {currentCustomer && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#F1F5F9]">
-                    <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('currentDebt')}</p>
-                    <p className="text-xl font-black text-red-600 mt-1">${oldDebt.toLocaleString()}</p>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#F1F5F9]">
+                      <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('currentDebt')}</p>
+                      <p className="text-xl font-black text-red-600 mt-1">${oldDebt.toLocaleString()}</p>
+                    </div>
+                    <div className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#F1F5F9]">
+                      <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('phone')}</p>
+                      <p className="text-xl font-bold text-[#064E3B] mt-1">{currentCustomer.phone}</p>
+                    </div>
                   </div>
-                  <div className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#F1F5F9]">
-                    <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('phone')}</p>
-                    <p className="text-xl font-bold text-[#064E3B] mt-1">{currentCustomer.phone}</p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-center rounded-xl border-[#D1FAE5] bg-[#ECFDF5] text-[#047857] hover:bg-[#D1FAE5]"
+                      onClick={() => setDebtHistoryOpen(true)}
+                    >
+                      <History className="mr-2 h-4 w-4" />
+                      {t('viewDebtHistory')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-center rounded-xl border-[#DBEAFE] bg-[#EFF6FF] text-[#1D4ED8] hover:bg-[#DBEAFE]"
+                      onClick={() => setOrderHistoryOpen(true)}
+                    >
+                      <History className="mr-2 h-4 w-4" />
+                      {t('viewOrderHistory')}
+                    </Button>
                   </div>
                 </div>
               )}
@@ -157,6 +310,7 @@ export default function OrderForm({
                     <TableRow className="hover:bg-transparent border-b border-[#F1F5F9]">
                       <TableHead className="px-8 py-4 font-bold text-[#475569]">{t('product')}</TableHead>
                       <TableHead className="w-28 py-4 font-bold text-[#475569]">{t('qty')}</TableHead>
+                      <TableHead className="w-40 py-4 font-bold text-[#475569]">{t('unit')}</TableHead>
                       <TableHead className="w-36 py-4 font-bold text-[#475569]">{t('price')}</TableHead>
                       <TableHead className="w-36 text-right px-8 py-4 font-bold text-[#475569]">{t('subtotal')}</TableHead>
                       <TableHead className="w-16 py-4"></TableHead>
@@ -168,7 +322,7 @@ export default function OrderForm({
                         <TableCell className="px-8 py-4">
                           <Select 
                             value={item.productId} 
-                            onValueChange={(val) => updateItem(index, 'productId', val)}
+                            onValueChange={(val) => handleProductChange(index, val)}
                           >
                             <SelectTrigger className="rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10">
                               <SelectValue placeholder={t('productPlaceholder')} />
@@ -187,6 +341,23 @@ export default function OrderForm({
                             value={item.quantity} 
                             onChange={(e) => updateItem(index, 'quantity', Number(e.target.value))}
                           />
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <Select
+                            value={item.unitId}
+                            onValueChange={(val) => updateItem(index, 'unitId', val)}
+                          >
+                            <SelectTrigger className="rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10">
+                              <SelectValue placeholder={t('unitPlaceholder')} />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              {units.map((unit) => (
+                                <SelectItem key={unit.id} value={unit.id} className="cursor-pointer">
+                                  {getUnitLabel(unit)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell className="py-4">
                           <div className="relative">
@@ -217,7 +388,7 @@ export default function OrderForm({
                     ))}
                     {items.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-20 text-[#94A3B8]">
+                        <TableCell colSpan={6} className="text-center py-20 text-[#94A3B8]">
                           <div className="flex flex-col items-center">
                             <Package className="w-12 h-12 mb-4 opacity-20" />
                             <p className="font-medium">{t('noItemsTitle')}</p>
@@ -299,7 +470,7 @@ export default function OrderForm({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Saving...
+                    {t('saving')}
                   </span>
                 ) : (
                   <span className="flex items-center">
@@ -316,6 +487,109 @@ export default function OrderForm({
           </Card>
         </div>
       </div>
+
+      <Dialog open={debtHistoryOpen} onOpenChange={setDebtHistoryOpen}>
+        <DialogContent className="max-w-3xl overflow-hidden rounded-2xl p-0">
+          <DialogHeader className="border-b border-[#F1F5F9] bg-[#F8FAFC] px-6 py-5">
+            <DialogTitle className="text-xl font-bold text-[#064E3B]">{t('debtHistory')}</DialogTitle>
+            <DialogDescription>{t('debtHistorySubtitle')}</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-auto p-6">
+            <Table>
+              <TableHeader className="bg-[#F8FAFC]">
+                <TableRow className="border-b border-[#F1F5F9]">
+                  <TableHead className="font-bold text-[#475569]">{t('date')}</TableHead>
+                  <TableHead className="font-bold text-[#475569]">{t('reason')}</TableHead>
+                  <TableHead className="text-right font-bold text-[#475569]">{t('changeAmount')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {debtHistoryLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="py-12 text-center text-[#94A3B8]">{t('saving')}</TableCell>
+                  </TableRow>
+                ) : debtHistory.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="py-12 text-center text-[#94A3B8]">{t('noDebtHistory')}</TableCell>
+                  </TableRow>
+                ) : (
+                  debtHistory.map((entry) => (
+                    <TableRow key={entry.id} className="border-b border-[#F1F5F9]">
+                      <TableCell className="text-[#64748B]">
+                        {new Date(entry.createdAt).toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US')}
+                      </TableCell>
+                      <TableCell className="font-medium text-[#064E3B]">{getDebtReason(entry)}</TableCell>
+                      <TableCell className={`text-right font-bold ${entry.changeAmount >= 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                        {entry.changeAmount >= 0 ? '+' : '-'}${Math.abs(entry.changeAmount).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={orderHistoryOpen} onOpenChange={setOrderHistoryOpen}>
+        <DialogContent className="max-w-4xl overflow-hidden rounded-2xl p-0">
+          <DialogHeader className="border-b border-[#F1F5F9] bg-[#F8FAFC] px-6 py-5">
+            <DialogTitle className="text-xl font-bold text-[#064E3B]">{t('orderHistory')}</DialogTitle>
+            <DialogDescription>{t('orderHistorySubtitle')}</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-auto p-6">
+            <Table>
+              <TableHeader className="bg-[#F8FAFC]">
+                <TableRow className="border-b border-[#F1F5F9]">
+                  <TableHead className="font-bold text-[#475569]">{t('orderId')}</TableHead>
+                  <TableHead className="font-bold text-[#475569]">{t('date')}</TableHead>
+                  <TableHead className="text-right font-bold text-[#475569]">{t('totalCost')}</TableHead>
+                  <TableHead className="text-right font-bold text-[#475569]">{t('balanceDue')}</TableHead>
+                  <TableHead className="text-right font-bold text-[#475569]">{t('actions')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orderHistoryLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-12 text-center text-[#94A3B8]">{t('saving')}</TableCell>
+                  </TableRow>
+                ) : orderHistory.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-12 text-center text-[#94A3B8]">{t('noOrderHistory')}</TableCell>
+                  </TableRow>
+                ) : (
+                  orderHistory.map((entry) => (
+                    <TableRow key={entry.id} className="border-b border-[#F1F5F9]">
+                      <TableCell className="font-mono text-sm font-bold text-[#064E3B]">
+                        #{entry.id.slice(0, 8).toUpperCase()}
+                      </TableCell>
+                      <TableCell className="text-[#64748B]">
+                        {new Date(entry.createdAt).toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US')}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-[#064E3B]">
+                        ${entry.totalCost.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-[#B45309]">
+                        ${(entry.totalCost - entry.deposit).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="rounded-xl"
+                          onClick={() => handleViewOrderDetails(entry.id)}
+                        >
+                          {t('viewDetails')}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

@@ -11,3 +11,4 @@ This folder stores reusable, agent-agnostic assets for this repository.
 
 - `.gemini/skills` is a junction pointing to `.ai/skills`.
 - If you add or edit skills, do it in `.ai/skills`.
+- Preserve Vietnamese text with full diacritics when editing shared prompts, skills, or UI copy references for this repo.

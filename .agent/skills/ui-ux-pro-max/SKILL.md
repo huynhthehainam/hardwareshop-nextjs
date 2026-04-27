@@ -37,6 +37,8 @@ winget install Python.Python.3.12
 
 When user requests UI/UX work (design, build, create, implement, review, fix, improve), follow this workflow:
 
+If the repo or request includes Vietnamese UI copy, preserve full Vietnamese diacritics in any proposed labels, headings, helper text, and content.
+
 ### Step 1: Analyze User Requirements
 
 Extract key information from user request:

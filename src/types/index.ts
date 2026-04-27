@@ -23,6 +23,7 @@ export interface UserShop {
 export interface Unit {
   id: string;
   name: string;
+  name_vi?: string | null;
   type: string;
   is_main: boolean;
   conversion_rate: number;
@@ -31,7 +32,8 @@ export interface Unit {
 export interface Product {
   id: string;
   name: string;
-  default_unit_id: string;
+  default_unit_id: string | null;
+  default_price: number;
 }
 
 export interface Customer {
@@ -45,7 +47,8 @@ export interface CustomerDebtHistory {
   id: string;
   customer_id: string;
   change_amount: number;
-  reason: string;
+  reason_key: string;
+  reason_params?: Record<string, string | number | boolean | null> | null;
   created_at: string;
 }
 
@@ -55,8 +58,11 @@ export interface Order {
   customer_id: string;
   deposit: number;
   total_cost: number;
+  debt_after_order?: number | null;
   created_by: string;
   created_at: string;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
 }
 
 export interface OrderDetail {
@@ -64,6 +70,6 @@ export interface OrderDetail {
   order_id: string;
   product_id: string;
   quantity: number;
-  unit_id: string;
+  unit_id: string | null;
   price: number;
 }
