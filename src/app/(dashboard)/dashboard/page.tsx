@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/button';
 export default async function DashboardPage() {
   const locale = await getLocale();
   const t = createTranslator(locale);
+  const auth = await requireAuth();
+  
   type OrderWithCustomer = Order & { customer?: Customer | null };
   let orders: OrderWithCustomer[] = [];
   let customers: Customer[] = [];
@@ -27,6 +29,12 @@ export default async function DashboardPage() {
     orders = await getOrders();
     customers = await getCustomers();
     products = await getProducts();
+    console.log('[Dashboard] Data fetched:', { 
+      user: auth.user.email,
+      systemRole: auth.systemRole,
+      ordersCount: orders.length, 
+      customersCount: customers.length 
+    });
   } catch (e) {
     console.error('Failed to fetch dashboard data', e);
   }

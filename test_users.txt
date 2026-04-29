@@ -1,11 +1,17 @@
 Hardware Shop Test Users
 ========================
 
-User 1:
-Email: test@example.com
-Password: admin
-Role: Admin
-Shop: Test Hardware Shop
+System Admin (Global Access):
+Email: system.admin@example.com
+Password: Admin@123
+Role: System Admin (Can manage all shops)
 
-Note: SSO (Google) can be used, but require manual setup in Supabase Dashboard.
-The email/password login above is ready for testing.
+Shop Admin (Single Shop):
+Email: hardware.test@gmail.com
+Password: Admin@123
+Role: Shop Admin
+Shop: First Shop in System
+
+Note: 
+- To create additional roles, please use the Supabase Auth Dashboard.
+- SSO (Google) can be used, but requires manual setup in Supabase Dashboard.

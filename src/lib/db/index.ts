@@ -75,14 +75,53 @@ export async function getShop(id: string) {
   return data as Shop;
 }
 
-export async function getOrders(shopId?: string) {
+export async function getOrders(shopId?: string, searchTerm?: string) {
   const supabase = await createClient();
-  let query = supabase.from('order').select('*, customer:customer_id(*)');
-  if (shopId) {
-    query = query.eq('shop_id', shopId);
+  console.log('[DB] getOrders called:', { shopId, searchTerm });
+  
+  if (searchTerm) {
+    // If searching, we use !inner to allow filtering on the joined customer table.
+    // However, this excludes walk-in customers. 
+    // We'll perform two queries or a more complex one if possible.
+    // For simplicity and correctness with Supabase JS:
+    
+    // Query 1: Search by customer name (requires !inner)
+    let q1 = supabase
+      .from('order')
+      .select('*, customer:customer_id!inner(*)')
+      .ilike('customer.name', `%${searchTerm}%`);
+    if (shopId) q1 = q1.eq('shop_id', shopId);
+    const { data: customerMatch, error: error1 } = await q1;
+
+    // Query 2: Search by order ID (works for all orders including walk-ins)
+    let q2 = supabase
+      .from('order')
+      .select('*, customer:customer_id(*)')
+      .ilike('id', `%${searchTerm}%`);
+    if (shopId) q2 = q2.eq('shop_id', shopId);
+    const { data: idMatch, error: error2 } = await q2;
+
+    if (error1 && error2) {
+      console.error('[DB] getOrders search error:', { error1, error2 });
+      throw error1;
+    }
+
+    // Combine and deduplicate
+    const combined = [...(customerMatch || []), ...(idMatch || [])];
+    const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+    
+    return unique.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
-  const { data, error } = await query;
-  if (error) throw error;
+
+  // No search term: regular fetch
+  let query = supabase.from('order').select('*, customer:customer_id(*)');
+  if (shopId) query = query.eq('shop_id', shopId);
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) {
+    console.error('[DB] getOrders fetch error:', error);
+    throw error;
+  }
+  console.log('[DB] getOrders result count:', data?.length);
   return data;
 }
 

@@ -1,5 +1,4 @@
-import { requireAuth, getUserRole } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireAuth } from '@/lib/auth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { LocaleSwitcher } from '@/components/i18n/LocaleSwitcher';
@@ -22,8 +21,7 @@ export default async function DashboardLayout({
 }) {
   const locale = await getLocale();
   const t = createTranslator(locale);
-  const user = await requireAuth();
-  const userRole = await getUserRole(user.id);
+  const { user, role, systemRole } = await requireAuth();
 
   const navItems = [
     { href: '/dashboard', label: t('navDashboard'), icon: LayoutDashboard },
@@ -32,7 +30,9 @@ export default async function DashboardLayout({
     { href: '/customers', label: t('navCustomers'), icon: Users },
   ];
 
-  if (userRole?.role === 'admin') {
+  if (systemRole === 'system_admin') {
+    navItems.push({ href: '/admin/shops', label: t('navShopsAdmin'), icon: Store });
+  } else if (role === 'admin') {
     navItems.push({ href: '/shops', label: t('navShopsAdmin'), icon: Store });
   }
 

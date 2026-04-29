@@ -30,5 +30,17 @@ export async function requireAuth() {
   if (!user) {
     redirect('/login');
   }
-  return user;
+  
+  const shopData = await getUserRole(user.id);
+  // Check both app_metadata and user_metadata for robustness
+  const systemRole = (user.app_metadata?.system_role || user.user_metadata?.system_role) as string | undefined;
+  
+  console.log('[Auth] requireAuth:', { 
+    email: user.email, 
+    systemRole, 
+    shopId: shopData?.shop_id, 
+    role: shopData?.role 
+  });
+  
+  return { user, shopId: shopData?.shop_id, role: shopData?.role, systemRole };
 }

@@ -5,28 +5,40 @@ import Link from 'next/link';
 import { 
   ShoppingCart, 
   Plus, 
-  Search, 
   Filter, 
   Eye, 
-  MoreHorizontal,
   Calendar,
   User,
   CreditCard
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { createTranslator } from '@/lib/i18n/translate';
 import { getLocale } from '@/lib/i18n/server';
 import type { Customer, Order } from '@/types';
+import { SearchInput } from '@/components/SearchInput';
+import { requireAuth } from '@/lib/auth';
 
-export default async function OrdersPage() {
+interface PageProps {
+  searchParams: Promise<{ search?: string }>;
+}
+
+export default async function OrdersPage({ searchParams }: PageProps) {
+  const auth = await requireAuth();
+  const { shopId } = auth;
+  const { search } = await searchParams;
   const locale = await getLocale();
   const t = createTranslator(locale);
   type OrderWithCustomer = Order & { customer?: Customer | null };
   let orders: OrderWithCustomer[] = [];
   try {
-    orders = await getOrders();
+    orders = await getOrders(shopId, search);
+    console.log('[OrdersPage] Data fetched:', { 
+      user: auth.user.email,
+      shopId,
+      systemRole: auth.systemRole,
+      ordersCount: orders.length 
+    });
   } catch (e) {
     console.error(e);
   }
@@ -49,13 +61,10 @@ export default async function OrdersPage() {
       <Card className="border-none shadow-md rounded-2xl overflow-hidden bg-white">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-              <Input 
-                placeholder={t('searchOrdersPlaceholder')} 
-                className="pl-10 rounded-xl border-[#E2E8F0] focus:border-[#059669] focus:ring-[#059669]/10 h-11"
-              />
-            </div>
+            <SearchInput 
+              placeholder={t('searchOrdersPlaceholder')} 
+              defaultValue={search}
+            />
             <div className="flex gap-2">
               <Button variant="outline" className="rounded-xl border-[#E2E8F0] text-[#475569] h-11">
                 <Filter className="w-4 h-4 mr-2" />
