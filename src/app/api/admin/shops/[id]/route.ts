@@ -43,7 +43,7 @@ export async function GET(
   // Fetch auth user details for each user
   const usersWithEmails = await Promise.all(
     (userShops || []).map(async (us) => {
-      const { data: userData, error: authError } = await adminClient.auth.admin.getUserById(us.user_id);
+      const { data: userData } = await adminClient.auth.admin.getUserById(us.user_id);
       return {
         ...us,
         email: userData?.user?.email || 'Unknown',
@@ -51,8 +51,74 @@ export async function GET(
       };
     })
   );
+
+  const { data: orders, error: ordersError } = await supabase
+    .from('order')
+    .select('id, customer_id, total_cost, deposit, created_at, deleted_at, customer:customer_id(name)')
+    .eq('shop_id', id)
+    .order('created_at', { ascending: false });
+
+  if (ordersError) {
+    return NextResponse.json({ error: ordersError.message }, { status: 500 });
+  }
+
+  const activeOrders = (orders || []).filter((order) => !order.deleted_at);
+  const orderIds = activeOrders.map((order) => order.id);
+
+  let productCount = 0;
+  if (orderIds.length > 0) {
+    const { data: orderDetails, error: detailsError } = await supabase
+      .from('order_detail')
+      .select('product_id')
+      .in('order_id', orderIds);
+
+    if (detailsError) {
+      return NextResponse.json({ error: detailsError.message }, { status: 500 });
+    }
+
+    productCount = new Set(
+      (orderDetails || [])
+        .map((detail) => detail.product_id)
+        .filter(Boolean)
+    ).size;
+  }
+
+  const totalRevenue = activeOrders.reduce(
+    (sum, order) => sum + Number(order.total_cost || 0),
+    0
+  );
+  const totalOutstanding = activeOrders.reduce(
+    (sum, order) => sum + Math.max(Number(order.total_cost || 0) - Number(order.deposit || 0), 0),
+    0
+  );
+  const activeCustomers = new Set(
+    activeOrders.map((order) => order.customer_id).filter(Boolean)
+  ).size;
+
+  const businessMetrics = {
+    totalOrders: activeOrders.length,
+    totalRevenue,
+    activeCustomers,
+    activeProducts: productCount,
+    totalOutstanding,
+    lastOrderAt: activeOrders[0]?.created_at ?? null,
+  };
+
+  const recentOrders = activeOrders.slice(0, 5).map((order) => ({
+    id: order.id,
+    total_cost: order.total_cost,
+    deposit: order.deposit,
+    created_at: order.created_at,
+    customer_name:
+      Array.isArray(order.customer) ? order.customer[0]?.name : order.customer?.name ?? null,
+  }));
   
-  return NextResponse.json({ shop, users: usersWithEmails });
+  return NextResponse.json({
+    shop,
+    users: usersWithEmails,
+    businessMetrics,
+    recentOrders,
+  });
 }
 
 export async function POST(
@@ -65,7 +131,7 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { id: shopId } = await params;
+  await params;
   const { email, password, role } = await request.json();
 
   if (!email || !password || !role) {
@@ -119,7 +185,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { id: shopId } = await params;
+  await params;
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get('userId');
 

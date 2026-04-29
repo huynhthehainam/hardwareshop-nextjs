@@ -2,14 +2,28 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET() {
+  try {
+    const { user } = await requireAuth();
+    const supabase = await createClient();
+    
+    const { data, error } = await supabase
+      .from('product')
+      .select('*, unit:default_unit_id(*)')
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+    return NextResponse.json(data);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
   try {
     const { user, role } = await requireAuth();
-    const { id } = await params;
     
+    // Only shop admin can manage products for now
     if (role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -20,43 +34,17 @@ export async function PATCH(
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('product')
-      .update({
+      .insert({
         name,
         default_unit_id,
         default_price,
         image_url
       })
-      .eq('id', id)
       .select()
       .single();
 
     if (error) throw error;
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { user, role } = await requireAuth();
-    const { id } = await params;
-
-    if (role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const supabase = await createClient();
-    const { error } = await supabase
-      .from('product')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
