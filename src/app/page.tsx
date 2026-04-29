@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth';
+import { requireAuth } from '@/lib/auth';
 
 export default async function RootPage() {
-  const session = await getSession();
+  const { systemRole } = await requireAuth();
   
-  if (session) {
-    redirect('/dashboard');
+  if (systemRole === 'system_admin') {
+    redirect('/admin/shops');
   } else {
-    redirect('/login');
+    redirect('/dashboard');
   }
 }

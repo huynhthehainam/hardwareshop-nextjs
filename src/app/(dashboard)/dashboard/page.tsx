@@ -14,11 +14,17 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { requireAuth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 export default async function DashboardPage() {
   const locale = await getLocale();
   const t = createTranslator(locale);
   const auth = await requireAuth();
+
+  if (auth.systemRole === 'system_admin') {
+    redirect('/admin/shops');
+  }
   
   type OrderWithCustomer = Order & { customer?: Customer | null };
   let orders: OrderWithCustomer[] = [];

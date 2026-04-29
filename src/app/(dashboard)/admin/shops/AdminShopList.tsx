@@ -21,10 +21,11 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Store, Plus, Edit, Trash2, Loader2, Phone, MapPin } from 'lucide-react';
+import { Store, Plus, Edit, Trash2, Loader2, Phone, MapPin, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Shop } from '@/types';
 import { useI18n } from '@/components/i18n/I18nProvider';
+import Link from 'next/link';
 
 export default function AdminShopList() {
   const { t } = useI18n();
@@ -43,7 +44,7 @@ export default function AdminShopList() {
       const data = await response.json();
       setShops(data);
     } catch (err) {
-      toast.error('Error loading shops');
+      toast.error(t('errLoadShops'));
     } finally {
       setLoading(false);
     }
@@ -69,13 +70,13 @@ export default function AdminShopList() {
 
       if (!response.ok) throw new Error('Failed to save shop');
 
-      toast.success(editingShop ? 'Shop updated' : 'Shop created');
+      toast.success(editingShop ? t('shopUpdated') : t('shopCreated'));
       setIsDialogOpen(false);
       setEditingShop(null);
       setFormData({ name: '', phone: '', address: '' });
       fetchShops();
     } catch (error) {
-      toast.error('Error saving shop');
+      toast.error(t('errSaveShop'));
     } finally {
       setSubmitting(false);
     }
@@ -88,15 +89,15 @@ export default function AdminShopList() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this shop?')) return;
+    if (!confirm(t('confirmDeleteShop'))) return;
 
     try {
       const response = await fetch(`/api/admin/shops?id=${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to delete shop');
-      toast.success('Shop deleted');
+      toast.success(t('shopDeleted'));
       fetchShops();
     } catch (error) {
-      toast.error('Error deleting shop');
+      toast.error(t('errDeleteShop'));
     }
   };
 
@@ -105,7 +106,7 @@ export default function AdminShopList() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-black text-[#064E3B] tracking-tight">{t('shopAdminTitle')}</h2>
-          <p className="text-[#64748B] font-medium mt-1">Platform-wide shop management</p>
+          <p className="text-[#64748B] font-medium mt-1">{t('shopAdminSubtitleAdmin')}</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
@@ -117,13 +118,13 @@ export default function AdminShopList() {
           <DialogTrigger asChild>
             <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl px-6 h-12 shadow-lg shadow-[#F97316]/20 transition-all hover:scale-[1.02]">
               <Plus className="w-5 h-5 mr-2" />
-              Add New Shop
+              {t('addNewShop')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px] rounded-[2rem]">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-[#064E3B]">
-                {editingShop ? 'Edit Shop' : 'Create New Shop'}
+                {editingShop ? t('editShop') : t('createNewShop')}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
@@ -164,7 +165,7 @@ export default function AdminShopList() {
                   {submitting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    editingShop ? 'Update Shop' : 'Create Shop'
+                    editingShop ? t('updateShop') : t('createShop')
                   )}
                 </Button>
               </DialogFooter>
@@ -183,9 +184,9 @@ export default function AdminShopList() {
             <Table>
               <TableHeader className="bg-[#F8FAFC]">
                 <TableRow className="hover:bg-transparent border-b border-[#F1F5F9]">
-                  <TableHead className="px-8 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">Shop Info</TableHead>
-                  <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">Contact</TableHead>
-                  <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs text-right">Actions</TableHead>
+                  <TableHead className="px-8 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('shopInfo')}</TableHead>
+                  <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('contact')}</TableHead>
+                  <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -196,7 +197,7 @@ export default function AdminShopList() {
                         <div className="w-16 h-16 bg-[#F1F5F9] rounded-2xl flex items-center justify-center">
                           <Store className="w-8 h-8 text-[#94A3B8]" />
                         </div>
-                        <p className="text-[#64748B] font-bold text-lg">No shops found</p>
+                        <p className="text-[#64748B] font-bold text-lg">{t('noShopsFound')}</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -236,6 +237,16 @@ export default function AdminShopList() {
                       </TableCell>
                       <TableCell className="px-8 py-6 text-right">
                         <div className="flex justify-end space-x-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            asChild
+                            className="rounded-xl hover:bg-[#F0F9FF] hover:text-[#0EA5E9]"
+                          >
+                            <Link href={`/admin/shops/${shop.id}`}>
+                              <ExternalLink className="w-5 h-5" />
+                            </Link>
+                          </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 

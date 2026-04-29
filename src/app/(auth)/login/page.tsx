@@ -20,7 +20,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error, data } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -28,7 +28,13 @@ export default function LoginPage() {
     if (error) {
       toast.error(error.message);
     } else {
-      window.location.href = '/dashboard';
+      const user = data.user;
+      const systemRole = user?.app_metadata?.system_role || user?.user_metadata?.system_role;
+      if (systemRole === 'system_admin') {
+        window.location.href = '/admin/shops';
+      } else {
+        window.location.href = '/dashboard';
+      }
     }
     setLoading(false);
   };

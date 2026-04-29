@@ -23,12 +23,15 @@ export default async function DashboardLayout({
   const t = createTranslator(locale);
   const { user, role, systemRole } = await requireAuth();
 
-  const navItems = [
-    { href: '/dashboard', label: t('navDashboard'), icon: LayoutDashboard },
-    { href: '/orders', label: t('navOrders'), icon: ShoppingCart },
-    { href: '/products', label: t('navProducts'), icon: Package },
-    { href: '/customers', label: t('navCustomers'), icon: Users },
-  ];
+  const navItems =
+    systemRole === 'system_admin'
+      ? []
+      : [
+          { href: '/dashboard', label: t('navDashboard'), icon: LayoutDashboard },
+          { href: '/orders', label: t('navOrders'), icon: ShoppingCart },
+          { href: '/products', label: t('navProducts'), icon: Package },
+          { href: '/customers', label: t('navCustomers'), icon: Users },
+        ];
 
   if (systemRole === 'system_admin') {
     navItems.push({ href: '/admin/shops', label: t('navShopsAdmin'), icon: Store });

@@ -147,7 +147,7 @@ export default function ShopAdminForm({ shop }: { shop: Shop }) {
                     className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl"
                   >
                     <X className="w-4 h-4 mr-1" />
-                    Remove Logo
+                    {t('removeLogo')}
                   </Button>
                 )}
               </div>

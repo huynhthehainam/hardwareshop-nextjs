@@ -10,9 +10,11 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error && data.user) {
+      const systemRole = data.user.app_metadata?.system_role || data.user.user_metadata?.system_role;
+      const target = systemRole === 'system_admin' ? '/admin/shops' : next;
+      return NextResponse.redirect(`${origin}${target}`)
     }
   }
 
