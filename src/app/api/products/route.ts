@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, default_unit_id, default_price, image_url } = body;
+    const { name, default_unit_id, default_price, price_for_frequent_customer, image_url } = body;
 
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -57,6 +57,7 @@ export async function POST(request: Request) {
         name,
         default_unit_id,
         default_price,
+        price_for_frequent_customer,
         image_url,
         shop_id: shopId
       })

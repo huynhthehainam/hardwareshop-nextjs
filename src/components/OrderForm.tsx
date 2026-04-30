@@ -137,7 +137,7 @@ export default function OrderForm({
       productId: quickAddProductId,
       quantity: totalQuantity,
       unitId: product.default_unit_id || '',
-      price: product.default_price || 0,
+      price: getProductPrice(product),
       note: note
     }]);
 
@@ -176,6 +176,15 @@ export default function OrderForm({
     return translated === key ? unit.name : translated;
   };
 
+  const getProductPrice = (product: Product) => {
+    const currentCustomer = customers.find((entry) => entry.id === customerId);
+    if (currentCustomer?.is_frequent_customer && product.price_for_frequent_customer != null) {
+      return product.price_for_frequent_customer;
+    }
+
+    return product.default_price || 0;
+  };
+
   const handleProductChange = (index: number, productId: string) => {
     const product = products.find((candidate) => candidate.id === productId);
     const newItems = [...items];
@@ -183,7 +192,7 @@ export default function OrderForm({
       ...newItems[index],
       productId,
       unitId: product?.default_unit_id ?? newItems[index]?.unitId ?? '',
-      price: product?.default_price ?? newItems[index]?.price ?? 0,
+      price: product ? getProductPrice(product) : newItems[index]?.price ?? 0,
     };
     setItems(newItems);
   };
@@ -393,9 +402,16 @@ export default function OrderForm({
                       <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('currentDebt')}</p>
                       <p className="text-xl font-black text-red-600 mt-1">${oldDebt.toLocaleString()}</p>
                     </div>
-                    <div className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#F1F5F9]">
-                      <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('phone')}</p>
-                      <p className="text-xl font-bold text-[#064E3B] mt-1">{currentCustomer.phone}</p>
+                    <div className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#F1F5F9] space-y-3">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('phone')}</p>
+                          <p className="text-xl font-bold text-[#064E3B] mt-1">{currentCustomer.phone}</p>
+                        </div>
+                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.18em] ${currentCustomer.is_frequent_customer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                          {currentCustomer.is_frequent_customer ? t('frequentCustomer') : t('regularCustomer')}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
@@ -873,7 +889,7 @@ export default function OrderForm({
               <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#F1F5F9]">
                 <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('totalCost')}</p>
                 <p className="text-xl font-black text-[#059669] mt-1">
-                  ${(quickAddRows.reduce((acc, r) => acc + (r.size * r.quantity), 0) * (products.find(p => p.id === quickAddProductId)?.default_price || 0)).toLocaleString()}
+                  ${(quickAddRows.reduce((acc, r) => acc + (r.size * r.quantity), 0) * (getProductPrice(products.find(p => p.id === quickAddProductId) || { id: '', name: '', default_unit_id: null, default_price: 0, image_url: null, deleted_at: null } as Product))).toLocaleString()}
                 </p>
               </div>
             </div>

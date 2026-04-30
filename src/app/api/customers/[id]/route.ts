@@ -1,9 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
-export async function POST(request: Request) {
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const { id } = await params;
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -13,7 +17,8 @@ export async function POST(request: Request) {
     const { name, phone, is_frequent_customer } = await request.json();
     const { data, error } = await supabase
       .from('customer')
-      .insert({ name, phone, is_frequent_customer })
+      .update({ name, phone, is_frequent_customer })
+      .eq('id', id)
       .select()
       .single();
 

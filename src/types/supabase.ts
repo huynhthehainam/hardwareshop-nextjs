@@ -184,6 +184,7 @@ export type Database = {
           id: string
           image_url: string | null
           name: string
+          price_for_frequent_customer: number | null
           shop_id: string
         }
         Insert: {
@@ -193,6 +194,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name: string
+          price_for_frequent_customer?: number | null
           shop_id: string
         }
         Update: {
@@ -202,6 +204,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           name?: string
+          price_for_frequent_customer?: number | null
           shop_id?: string
         }
         Relationships: [

@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils"
 
 export interface MoneyInputProps
   extends Omit<React.ComponentProps<"input">, "value" | "onChange"> {
-  value: number
-  onValueChange: (value: number) => void
+  value: number | null
+  onValueChange: (value: number | null) => void
   currencySymbol?: string
   symbolClassName?: string
 }
@@ -33,10 +33,9 @@ const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
     // Update display value when the numeric value changes from outside
     React.useEffect(() => {
       const numericDisplayValue = parseFloat(displayValue.replace(/,/g, ""))
-      if (numericDisplayValue !== value) {
-        const formatted = value === 0 && displayValue === "" 
-          ? "" 
-          : value.toLocaleString("en-US")
+      const currentValue = Number.isNaN(numericDisplayValue) ? null : numericDisplayValue
+      if (currentValue !== value) {
+        const formatted = value === null ? "" : value.toLocaleString("en-US")
         setDisplayValue(formatted)
       }
     }, [value, displayValue])
@@ -51,7 +50,7 @@ const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(
       
       if (rawValue === "") {
         setDisplayValue("")
-        onValueChange(0)
+        onValueChange(null)
         return
       }
 

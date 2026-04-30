@@ -79,7 +79,7 @@ export default function CustomerDetail({
         </Button>
         <div>
           <h2 className="text-3xl font-black text-[#064E3B] tracking-tight">{customer.name}</h2>
-          <div className="flex items-center space-x-4 mt-1">
+          <div className="flex flex-wrap items-center gap-3 mt-1">
             <div className="flex items-center text-[#64748B] font-bold">
               <Phone className="w-4 h-4 mr-2" />
               {customer.phone}
@@ -87,6 +87,9 @@ export default function CustomerDetail({
             <div className="w-1 h-1 bg-[#CBD5E1] rounded-full" />
             <div className="text-xs font-black text-[#059669] uppercase tracking-widest">
               ID: {customer.id}
+            </div>
+            <div className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-[0.16em] ${customer.is_frequent_customer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+              {customer.is_frequent_customer ? t('frequentCustomer') : t('regularCustomer')}
             </div>
           </div>
         </div>

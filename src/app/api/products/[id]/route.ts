@@ -15,7 +15,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { name, default_unit_id, default_price, image_url } = body;
+    const { name, default_unit_id, default_price, price_for_frequent_customer, image_url } = body;
 
     const supabase = await createClient();
     
@@ -25,6 +25,7 @@ export async function PATCH(
         name,
         default_unit_id,
         default_price,
+        price_for_frequent_customer,
         image_url
       })
       .eq('id', id);

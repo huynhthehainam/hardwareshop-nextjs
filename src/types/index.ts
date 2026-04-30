@@ -37,6 +37,7 @@ export interface Product {
   name: string;
   default_unit_id: string | null;
   default_price: number;
+  price_for_frequent_customer?: number | null;
   image_url?: string | null;
   deleted_at?: string | null;
 }
@@ -46,6 +47,7 @@ export interface Customer {
   phone: string;
   name: string;
   debt: number;
+  is_frequent_customer?: boolean;
 }
 
 export interface CustomerDebtHistory {

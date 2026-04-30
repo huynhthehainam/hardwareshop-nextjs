@@ -80,6 +80,7 @@ export default function ProductList() {
     name: '',
     default_unit_id: '',
     default_price: 0,
+    price_for_frequent_customer: null as number | null,
     image_url: ''
   });
 
@@ -163,6 +164,7 @@ export default function ProductList() {
       name: '',
       default_unit_id: '',
       default_price: 0,
+      price_for_frequent_customer: null,
       image_url: ''
     });
   };
@@ -173,6 +175,7 @@ export default function ProductList() {
       name: product.name,
       default_unit_id: product.default_unit_id || '',
       default_price: product.default_price,
+      price_for_frequent_customer: product.price_for_frequent_customer ?? null,
       image_url: product.image_url || ''
     });
     setIsDialogOpen(true);
@@ -260,12 +263,23 @@ export default function ProductList() {
                   <MoneyInput
                     id="price"
                     value={formData.default_price}
-                    onValueChange={(val) => setFormData({ ...formData, default_price: val })}
+                    onValueChange={(val) => setFormData({ ...formData, default_price: val ?? 0 })}
                     className="rounded-xl border-[#E2E8F0] h-12 focus:ring-[#059669]/10"
                     required
                     currencySymbol="$"
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="frequent-price" className="text-sm font-bold text-[#475569]">{t('frequentCustomerPrice')}</Label>
+                <MoneyInput
+                  id="frequent-price"
+                  value={formData.price_for_frequent_customer}
+                  onValueChange={(val) => setFormData({ ...formData, price_for_frequent_customer: val })}
+                  className="rounded-xl border-[#E2E8F0] h-12 focus:ring-[#059669]/10"
+                  currencySymbol="$"
+                />
+                <p className="text-xs text-[#64748B]">{t('frequentCustomerPriceHelp')}</p>
               </div>
               <ImageUpload
                 value={formData.image_url}
@@ -318,13 +332,14 @@ export default function ProductList() {
                   <TableHead className="px-8 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('product')}</TableHead>
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('defaultUnit')}</TableHead>
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('basePrice')}</TableHead>
+                  <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('frequentCustomerPrice')}</TableHead>
                   <TableHead className="px-8 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {products.length === 0 && !loading ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-80 text-center">
+                    <TableCell colSpan={5} className="h-80 text-center">
                       <div className="flex flex-col items-center justify-center space-y-4">
                         <div className="w-20 h-20 bg-[#F1F5F9] rounded-3xl flex items-center justify-center">
                           <Package className="w-10 h-10 text-[#94A3B8]" />
@@ -369,6 +384,9 @@ export default function ProductList() {
                         <TableCell className="px-6 py-6 font-extrabold text-[#064E3B] text-lg">
                           ${product.default_price.toLocaleString()}
                         </TableCell>
+                        <TableCell className="px-6 py-6 font-extrabold text-[#0F172A] text-lg">
+                          {product.price_for_frequent_customer != null ? `\$${product.price_for_frequent_customer.toLocaleString()}` : '-'}
+                        </TableCell>
                         <TableCell className="px-8 py-6 text-right">
                           <div className="flex justify-end space-x-2">
                             <Button
@@ -393,7 +411,7 @@ export default function ProductList() {
                     ))}
                     {loading && (
                       <TableRow>
-                        <TableCell colSpan={4} className="py-8 text-center">
+                        <TableCell colSpan={5} className="py-8 text-center">
                           <Loader2 className="w-8 h-8 text-[#059669] animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>

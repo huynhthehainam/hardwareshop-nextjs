@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, ChangeEvent, FormEvent } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -14,9 +14,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Customer } from '@/types';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { Search, User, Phone, DollarSign, Eye, Users, Plus, Printer, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, User, Phone, DollarSign, Eye, Users, Plus, Printer, ChevronLeft, ChevronRight, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { generateCustomerListPdf } from '@/components/CustomerPDF';
 import { toast } from 'sonner';
@@ -28,6 +29,8 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
   const [search, setSearch] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   const filteredCustomers = customers.filter(c => 
@@ -39,7 +42,7 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedCustomers = filteredCustomers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
     setCurrentPage(1);
   };
@@ -59,17 +62,18 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
     }
   };
 
-  const handleCreateCustomer = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateCustomer = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
     const phone = formData.get('phone') as string;
+    const is_frequent_customer = formData.get('is_frequent_customer') === 'on';
 
     try {
       const res = await fetch('/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone }),
+        body: JSON.stringify({ name, phone, is_frequent_customer }),
       });
       if (!res.ok) throw new Error(t('customerCreateFailed'));
       toast.success(t('customerCreated'));
@@ -78,6 +82,31 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
       window.location.reload();
     } catch (error) {
       toast.error(t('customerCreateFailed'));
+    }
+  };
+
+  const handleUpdateCustomer = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingCustomer) return;
+
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string;
+    const phone = formData.get('phone') as string;
+    const is_frequent_customer = formData.get('is_frequent_customer') === 'on';
+
+    try {
+      const res = await fetch(`/api/customers/${editingCustomer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone, is_frequent_customer }),
+      });
+      if (!res.ok) throw new Error(t('customerUpdateFailed'));
+      toast.success(t('customerUpdated'));
+      setEditOpen(false);
+      setEditingCustomer(null);
+      window.location.reload();
+    } catch (error) {
+      toast.error(t('customerUpdateFailed'));
     }
   };
 
@@ -113,7 +142,42 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
                   <Label htmlFor="phone">{t('phone')}</Label>
                   <Input name="phone" id="phone" placeholder={t('enterPhone')} />
                 </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox name="is_frequent_customer" id="is_frequent_customer" />
+                  <Label htmlFor="is_frequent_customer" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    {t('frequentCustomer')}
+                  </Label>
+                </div>
                 <Button type="submit" className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl h-11 shadow-md shadow-[#F97316]/10">{t('createNewCustomer')}</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={editOpen} onOpenChange={(value) => {
+            setEditOpen(value);
+            if (!value) {
+              setEditingCustomer(null);
+            }
+          }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('editCustomer')}</DialogTitle>
+              </DialogHeader>
+              <form key={editingCustomer?.id} onSubmit={handleUpdateCustomer} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">{t('customerName')}</Label>
+                  <Input name="name" id="edit-name" defaultValue={editingCustomer?.name} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-phone">{t('phone')}</Label>
+                  <Input name="phone" id="edit-phone" defaultValue={editingCustomer?.phone} />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox name="is_frequent_customer" id="edit-is_frequent_customer" defaultChecked={editingCustomer?.is_frequent_customer} />
+                  <Label htmlFor="edit-is_frequent_customer" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    {t('frequentCustomer')}
+                  </Label>
+                </div>
+                <Button type="submit" className="w-full bg-[#059669] hover:bg-[#047857] text-white rounded-xl h-11 shadow-md shadow-[#059669]/10">{t('updateCustomer')}</Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -138,6 +202,7 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
                 <TableRow className="hover:bg-transparent border-b border-[#F1F5F9]">
                   <TableHead className="px-10 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('customerName')}</TableHead>
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('phone')}</TableHead>
+                  <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('frequentCustomer')}</TableHead>
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs text-right">{t('totalOutstanding')}</TableHead>
                   <TableHead className="px-10 py-6 w-20"></TableHead>
                 </TableRow>
@@ -145,7 +210,7 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
               <TableBody>
                 {paginatedCustomers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-96 text-center">
+                    <TableCell colSpan={5} className="h-96 text-center">
                       <div className="flex flex-col items-center justify-center space-y-4">
                         <div className="w-20 h-20 bg-[#F1F5F9] rounded-3xl flex items-center justify-center">
                           <Users className="w-10 h-10 text-[#94A3B8]" />
@@ -171,24 +236,41 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
                       <TableCell className="px-6 py-6">
                         <div className="flex items-center space-x-2 text-[#475569] font-bold">
                           <Phone className="w-4 h-4 text-[#94A3B8]" />
-                          <span>{customer.phone}</span>
+                          <span>{customer.phone || t('noPhone')}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-6">
+                        <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                          <Users className={`w-3 h-3 mr-1 ${customer.is_frequent_customer ? 'text-[#059669]' : 'text-[#94A3B8]'}`} />
+                          <span className={customer.is_frequent_customer ? 'text-[#059669]' : 'text-[#64748B]'}>
+                            {customer.is_frequent_customer ? t('frequentCustomer') : t('regularCustomer')}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-6 text-right">
                         <div className="inline-flex flex-col items-end">
                           <div className={`px-4 py-2 rounded-xl flex items-center space-x-2 ${customer.debt > 0 ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
                             <DollarSign className="w-4 h-4" />
-                            <span className="text-xl font-black">${customer.debt.toLocaleString()}</span>
+                            <span className="text-xl font-black">{customer.debt.toLocaleString()}</span>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="px-10 py-6 text-right">
-                        <Button variant="ghost" asChild size="sm" className="text-[#059669] hover:bg-[#ECFDF5] rounded-lg">
-                          <Link href={`/customers/${customer.id}`}>
-                            <Eye className="w-4 h-4 mr-2" />
-                            {t('viewDetails')}
-                          </Link>
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" size="sm" className="rounded-lg border-[#E2E8F0] text-[#475569] hover:bg-[#ECFDF5]" onClick={() => {
+                            setEditingCustomer(customer);
+                            setEditOpen(true);
+                          }}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            {t('editCustomer')}
+                          </Button>
+                          <Button variant="ghost" asChild size="sm" className="text-[#059669] hover:bg-[#ECFDF5] rounded-lg">
+                            <Link href={`/customers/${customer.id}`}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              {t('viewDetails')}
+                            </Link>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
