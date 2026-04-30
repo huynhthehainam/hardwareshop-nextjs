@@ -8,9 +8,13 @@ export async function getShops() {
   return data as Shop[];
 }
 
-export async function getProducts() {
+export async function getProducts(shopId?: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.from('product').select('*');
+  let query = supabase.from('product').select('*');
+  if (shopId) {
+    query = query.eq('shop_id', shopId);
+  }
+  const { data, error } = await query.order('name', { ascending: true });
   if (error) throw error;
   return data as Product[];
 }

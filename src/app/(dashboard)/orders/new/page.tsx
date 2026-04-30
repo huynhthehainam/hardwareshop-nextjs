@@ -2,9 +2,11 @@ import { getProducts, getCustomers, getUnits } from '@/lib/db';
 import OrderForm from '@/components/OrderForm';
 import { createTranslator } from '@/lib/i18n/translate';
 import { getLocale } from '@/lib/i18n/server';
+import { requireAuth } from '@/lib/auth';
 import type { Customer, Product, Unit } from '@/types';
 
 export default async function NewOrderPage() {
+  const { shopId } = await requireAuth();
   const locale = await getLocale();
   const t = createTranslator(locale);
   let products: Product[] = [];
@@ -12,7 +14,7 @@ export default async function NewOrderPage() {
   let units: Unit[] = [];
   
   try {
-    products = await getProducts();
+    products = await getProducts(shopId);
     customers = await getCustomers();
     units = await getUnits();
   } catch (e) {

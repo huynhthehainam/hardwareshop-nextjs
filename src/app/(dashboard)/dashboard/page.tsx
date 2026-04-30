@@ -32,9 +32,9 @@ export default async function DashboardPage() {
   let products: Product[] = [];
   
   try {
-    orders = await getOrders();
+    orders = await getOrders(auth.shopId);
     customers = await getCustomers();
-    products = await getProducts();
+    products = await getProducts(auth.shopId);
     console.log('[Dashboard] Data fetched:', { 
       user: auth.user.email,
       systemRole: auth.systemRole,

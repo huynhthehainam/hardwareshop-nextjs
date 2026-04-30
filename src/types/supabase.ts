@@ -42,7 +42,7 @@ export type Database = {
           customer_id: string
           id: string
           reason_key: string
-          reason_params: Json | null
+          reason_params: Json
         }
         Insert: {
           change_amount: number
@@ -50,7 +50,7 @@ export type Database = {
           customer_id: string
           id?: string
           reason_key: string
-          reason_params?: Json | null
+          reason_params?: Json
         }
         Update: {
           change_amount?: number
@@ -58,7 +58,7 @@ export type Database = {
           customer_id?: string
           id?: string
           reason_key?: string
-          reason_params?: Json | null
+          reason_params?: Json
         }
         Relationships: [
           {
@@ -178,19 +178,25 @@ export type Database = {
           default_price: number
           default_unit_id: string | null
           id: string
+          image_url: string | null
           name: string
+          shop_id: string
         }
         Insert: {
           default_price?: number
           default_unit_id?: string | null
           id?: string
+          image_url?: string | null
           name: string
+          shop_id: string
         }
         Update: {
           default_price?: number
           default_unit_id?: string | null
           id?: string
+          image_url?: string | null
           name?: string
+          shop_id?: string
         }
         Relationships: [
           {
@@ -200,23 +206,39 @@ export type Database = {
             referencedRelation: "unit"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
         ]
       }
       shops: {
         Row: {
+          address: string | null
           created_at: string | null
           id: string
+          logo_url: string | null
           name: string
+          phone: string | null
         }
         Insert: {
+          address?: string | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           name: string
+          phone?: string | null
         }
         Update: {
+          address?: string | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           name?: string
+          phone?: string | null
         }
         Relationships: []
       }
@@ -278,7 +300,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_order: {
+        Args: {
+          p_created_by: string
+          p_customer_id: string
+          p_deposit: number
+          p_items: Json
+          p_shop_id: string
+          p_total_cost: number
+        }
+        Returns: Json
+      }
+      is_system_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

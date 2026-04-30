@@ -7,10 +7,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user, role } = await requireAuth();
+    const { user, role, shopId, systemRole } = await requireAuth();
     const { id } = await params;
     
-    if (role !== 'admin') {
+    if (role !== 'admin' && systemRole !== 'system_admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -18,7 +18,8 @@ export async function PATCH(
     const { name, default_unit_id, default_price, image_url } = body;
 
     const supabase = await createClient();
-    const { data, error } = await supabase
+    
+    let query = supabase
       .from('product')
       .update({
         name,
@@ -26,9 +27,14 @@ export async function PATCH(
         default_price,
         image_url
       })
-      .eq('id', id)
-      .select()
-      .single();
+      .eq('id', id);
+
+    if (systemRole !== 'system_admin') {
+      if (!shopId) return NextResponse.json({ error: 'Shop ID required' }, { status: 400 });
+      query = query.eq('shop_id', shopId);
+    }
+
+    const { data, error } = await query.select().single();
 
     if (error) throw error;
     return NextResponse.json(data);
@@ -42,18 +48,25 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user, role } = await requireAuth();
+    const { user, role, shopId, systemRole } = await requireAuth();
     const { id } = await params;
 
-    if (role !== 'admin') {
+    if (role !== 'admin' && systemRole !== 'system_admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const supabase = await createClient();
-    const { error } = await supabase
+    let query = supabase
       .from('product')
       .delete()
       .eq('id', id);
+
+    if (systemRole !== 'system_admin') {
+      if (!shopId) return NextResponse.json({ error: 'Shop ID required' }, { status: 400 });
+      query = query.eq('shop_id', shopId);
+    }
+
+    const { error } = await query;
 
     if (error) throw error;
     return NextResponse.json({ success: true });

@@ -7,6 +7,7 @@ import OrderActions from '@/components/OrderActions';
 import { Badge } from '@/components/ui/badge';
 import { createTranslator } from '@/lib/i18n/translate';
 import { getLocale } from '@/lib/i18n/server';
+import { requireAuth } from '@/lib/auth';
 import { 
   User, 
   CreditCard, 
@@ -30,6 +31,7 @@ interface OrderDetailWithProduct {
 }
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { shopId, systemRole } = await requireAuth();
   const locale = await getLocale();
   const t = createTranslator(locale);
   const supabase = await createClient();
@@ -44,6 +46,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     notFound();
   }
 
+  // Security check: ensure user belongs to the shop of this order
+  if (systemRole !== 'system_admin' && order.shop_id !== shopId) {
+    notFound(); // or forbidden
+  }
+
   const shop = order.shop_id ? await getShop(order.shop_id) : null;
 
   const debtImpact = order.total_cost - order.deposit;
@@ -56,7 +63,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   const details = (detailsData ?? []) as OrderDetailWithProduct[];
 
-  const products = await getProducts();
+  const products = await getProducts(order.shop_id);
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
