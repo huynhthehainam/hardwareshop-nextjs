@@ -9,6 +9,14 @@ export const messages = {
     navProducts: "Inventory",
     navCustomers: "Customers",
     navShopsAdmin: "Shops (Admin)",
+    navSystemActions: "System Actions",
+
+    systemActionsTitle: "System Actions",
+    systemActionsSubtitle: "Perform high-level maintenance tasks and export database snapshots.",
+    databaseCloneTitle: "Clone Database",
+    databaseCloneDescription: "Export a compressed snapshot of your public schema tables as a ZIP archive.",
+    databaseCloneNote: "This download creates a ZIP file containing a JSON export of the current database tables.",
+    downloadDatabaseZip: "Download Database ZIP",
 
     workspace: "Workspace",
     welcomeBack: "Welcome back,",
@@ -241,7 +249,6 @@ export const messages = {
     imageUploaded: "Image uploaded successfully",
     imageUploadFailed: "Failed to upload image",
     removeImage: "Remove Image",
-    removeLogo: "Remove Logo",
     removeQRCode: "Remove QR Code",
     updateShopInfo: "Update Shop Information",
     shopInfoUpdated: "Shop information updated successfully",
@@ -311,6 +318,14 @@ export const messages = {
     navProducts: "Kho hàng",
     navCustomers: "Khách hàng",
     navShopsAdmin: "Cửa hàng (Admin)",
+    navSystemActions: "Hành động hệ thống",
+
+    systemActionsTitle: "Hành động hệ thống",
+    systemActionsSubtitle: "Thực hiện các tác vụ bảo trì và xuất dữ liệu hệ thống.",
+    databaseCloneTitle: "Sao chép cơ sở dữ liệu",
+    databaseCloneDescription: "Xuất snapshot nén của bảng public schema dưới dạng tệp ZIP.",
+    databaseCloneNote: "Tệp tải xuống sẽ chứa một bản xuất JSON của dữ liệu hiện tại.",
+    downloadDatabaseZip: "Tải xuống ZIP cơ sở dữ liệu",
 
     workspace: "Không gian làm việc",
     welcomeBack: "Chào mừng quay lại,",

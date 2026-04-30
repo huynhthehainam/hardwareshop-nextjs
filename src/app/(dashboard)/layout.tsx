@@ -9,8 +9,7 @@ import {
   ShoppingCart, 
   Package, 
   Users, 
-  Store, 
-  LogOut,
+  Store,   Database,  LogOut,
   ChevronRight
 } from 'lucide-react';
 
@@ -35,6 +34,7 @@ export default async function DashboardLayout({
 
   if (systemRole === 'system_admin') {
     navItems.push({ href: '/admin/shops', label: t('navShopsAdmin'), icon: Store });
+    navItems.push({ href: '/admin/system-actions', label: t('navSystemActions'), icon: Database });
   } else if (role === 'admin') {
     navItems.push({ href: '/shops', label: t('navShopsAdmin'), icon: Store });
   }
