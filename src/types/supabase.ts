@@ -127,6 +127,7 @@ export type Database = {
       order_detail: {
         Row: {
           id: string
+          note: string | null
           order_id: string | null
           price: number
           product_id: string | null
@@ -135,6 +136,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          note?: string | null
           order_id?: string | null
           price: number
           product_id?: string | null
@@ -143,6 +145,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          note?: string | null
           order_id?: string | null
           price?: number
           product_id?: string | null
@@ -177,6 +180,7 @@ export type Database = {
         Row: {
           default_price: number
           default_unit_id: string | null
+          deleted_at: string | null
           id: string
           image_url: string | null
           name: string
@@ -185,6 +189,7 @@ export type Database = {
         Insert: {
           default_price?: number
           default_unit_id?: string | null
+          deleted_at?: string | null
           id?: string
           image_url?: string | null
           name: string
@@ -193,6 +198,7 @@ export type Database = {
         Update: {
           default_price?: number
           default_unit_id?: string | null
+          deleted_at?: string | null
           id?: string
           image_url?: string | null
           name?: string
@@ -221,6 +227,7 @@ export type Database = {
           created_at: string | null
           id: string
           logo_url: string | null
+          qr_code_url: string | null
           name: string
           phone: string | null
         }
@@ -229,6 +236,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           logo_url?: string | null
+          qr_code_url?: string | null
           name: string
           phone?: string | null
         }
@@ -237,6 +245,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           logo_url?: string | null
+          qr_code_url?: string | null
           name?: string
           phone?: string | null
         }
@@ -248,7 +257,6 @@ export type Database = {
           id: string
           is_main: boolean | null
           name: string
-          name_vi: string | null
           type: string | null
         }
         Insert: {
@@ -256,7 +264,6 @@ export type Database = {
           id?: string
           is_main?: boolean | null
           name: string
-          name_vi?: string | null
           type?: string | null
         }
         Update: {
@@ -264,7 +271,6 @@ export type Database = {
           id?: string
           is_main?: boolean | null
           name?: string
-          name_vi?: string | null
           type?: string | null
         }
         Relationships: []

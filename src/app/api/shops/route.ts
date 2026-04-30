@@ -17,7 +17,7 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { name, phone, address, logo_url } = body;
+    const { name, phone, address, logo_url, qr_code_url } = body;
 
     const { data, error } = await supabase
       .from('shops')
@@ -26,6 +26,7 @@ export async function PATCH(request: Request) {
         phone,
         address,
         logo_url,
+        qr_code_url,
       })
       .eq('id', userRole.shop_id)
       .select()

@@ -29,10 +29,12 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Package, Plus, Search, Edit, Trash2, Loader2, Image as ImageIcon, MoreVertical, Filter, ArrowUp } from 'lucide-react';
+import { MoneyInput } from '@/components/ui/money-input';
 import { toast } from 'sonner';
 import { Product, Unit } from '@/types';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { useRef, useCallback } from 'react';
+import ImageUpload from '@/components/ImageUpload';
 
 type ProductWithUnit = Product & { unit?: Unit | null };
 
@@ -46,9 +48,19 @@ export default function ProductList() {
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  
+  // Debounce search term
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
   
   const observer = useRef<IntersectionObserver | null>(null);
   const lastElementRef = useCallback((node: HTMLElement | null) => {
@@ -107,12 +119,12 @@ export default function ProductList() {
     setProducts([]);
     setOffset(0);
     setHasMore(true);
-    fetchProducts(0, searchTerm, true);
-  }, [searchTerm]);
+    fetchProducts(0, debouncedSearchTerm, true);
+  }, [debouncedSearchTerm]);
 
   useEffect(() => {
     if (offset > 0) {
-      fetchProducts(offset, searchTerm);
+      fetchProducts(offset, debouncedSearchTerm);
     }
   }, [offset]);
 
@@ -230,35 +242,37 @@ export default function ProductList() {
                       <SelectValue placeholder={t('unitPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent className="z-[60] min-w-[var(--radix-select-trigger-width)] rounded-xl border border-[#D9E5E0] bg-white shadow-xl">
-                      {units.map((unit) => (
-                        <SelectItem key={unit.id} value={unit.id}>
-                          {locale === 'vi' ? unit.name_vi || unit.name : unit.name}
-                        </SelectItem>
-                      ))}
+                      {units.map((unit) => {
+                        const key = `unit_${unit.name}` as any;
+                        const translated = t(key);
+                        const label = translated === key ? unit.name : translated;
+                        return (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="price" className="text-sm font-bold text-[#475569]">{t('basePrice')}</Label>
-                  <Input
+                  <MoneyInput
                     id="price"
-                    type="number"
                     value={formData.default_price}
-                    onChange={(e) => setFormData({ ...formData, default_price: parseFloat(e.target.value) })}
+                    onValueChange={(val) => setFormData({ ...formData, default_price: val })}
                     className="rounded-xl border-[#E2E8F0] h-12 focus:ring-[#059669]/10"
                     required
+                    currencySymbol="$"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="image" className="text-sm font-bold text-[#475569]">{t('productImage')} (URL)</Label>
-                <Input
-                  id="image"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  className="rounded-xl border-[#E2E8F0] h-12 focus:ring-[#059669]/10"
-                />
-              </div>
+              <ImageUpload
+                value={formData.image_url}
+                onChange={(url) => setFormData({ ...formData, image_url: url })}
+                bucket="product-images"
+                label={t('productImage')}
+              />
               <DialogFooter className="pt-4">
                 <Button
                   type="submit"
@@ -344,7 +358,12 @@ export default function ProductList() {
                         </TableCell>
                         <TableCell className="px-6 py-6">
                           <div className="px-3 py-1 bg-[#F1F5F9] text-[#475569] font-bold text-xs rounded-full w-fit">
-                            {locale === 'vi' ? product.unit?.name_vi || product.unit?.name : product.unit?.name || '-'}
+                            {(() => {
+                              if (!product.unit) return '-';
+                              const key = `unit_${product.unit.name}` as any;
+                              const translated = t(key);
+                              return translated === key ? product.unit.name : translated;
+                            })()}
                           </div>
                         </TableCell>
                         <TableCell className="px-6 py-6 font-extrabold text-[#064E3B] text-lg">

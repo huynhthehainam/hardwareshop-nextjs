@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Store, Upload, Save, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { Shop } from '@/types';
 import { uploadFile } from '@/lib/supabase/storage';
+import ImageUpload from '@/components/ImageUpload';
 
 export default function ShopAdminForm({ shop }: { shop: Shop }) {
   const router = useRouter();
@@ -21,44 +22,8 @@ export default function ShopAdminForm({ shop }: { shop: Shop }) {
   const [phone, setPhone] = useState(shop.phone || '');
   const [address, setAddress] = useState(shop.address || '');
   const [logoUrl, setLogoUrl] = useState(shop.logo_url || '');
+  const [qrCodeUrl, setQrCodeUrl] = useState(shop.qr_code_url || '');
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-
-  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${shop.id}-${Date.now()}.${fileExt}`;
-      const filePath = `logos/${fileName}`;
-
-      const publicUrl = await uploadFile('shop-logos', filePath, file);
-      setLogoUrl(publicUrl);
-      
-      // Automatically update the database record with the new logo URL
-      const response = await fetch('/api/shops', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, address, logo_url: publicUrl }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update shop logo URL in database');
-
-      toast.success(t('logoUploaded'));
-      router.refresh();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      toast.error(`${t('logoUploadFailed')}: ${message}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const removeLogo = () => {
-    setLogoUrl('');
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +33,13 @@ export default function ShopAdminForm({ shop }: { shop: Shop }) {
       const response = await fetch('/api/shops', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, address, logo_url: logoUrl }),
+        body: JSON.stringify({ 
+          name, 
+          phone, 
+          address, 
+          logo_url: logoUrl,
+          qr_code_url: qrCodeUrl
+        }),
       });
 
       if (response.ok) {
@@ -102,58 +73,29 @@ export default function ShopAdminForm({ shop }: { shop: Shop }) {
             </div>
           </CardHeader>
           <CardContent className="p-8 space-y-8">
-            <div className="flex flex-col md:flex-row gap-8">
-              {/* Logo Upload Section */}
-              <div className="flex flex-col items-center space-y-4">
-                <Label className="text-sm font-bold text-[#475569] self-start">{t('shopLogo')}</Label>
-                <div className="relative group">
-                  <div className="w-40 h-40 rounded-3xl border-2 border-dashed border-[#E2E8F0] flex items-center justify-center overflow-hidden bg-[#F8FAFC] group-hover:border-[#059669] transition-colors">
-                    {logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={logoUrl} alt="Shop Logo" className="w-full h-full object-cover" />
-                    ) : (
-                      <ImageIcon className="w-12 h-12 text-[#94A3B8]" />
-                    )}
-                  </div>
-                  <label 
-                    htmlFor="logo-upload" 
-                    className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-3xl"
-                  >
-                    <div className="text-white flex flex-col items-center">
-                      <Upload className="w-6 h-6 mb-1" />
-                      <span className="text-xs font-bold">{t('uploadLogo')}</span>
-                    </div>
-                  </label>
-                  <input 
-                    id="logo-upload" 
-                    type="file" 
-                    className="hidden" 
-                    accept="image/*" 
-                    onChange={handleUploadLogo}
-                    disabled={uploading}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Media Section */}
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <ImageUpload
+                    value={logoUrl}
+                    onChange={setLogoUrl}
+                    bucket="shop-logos"
+                    label={t('shopLogo')}
+                    folder="logos"
                   />
-                  {uploading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-3xl">
-                      <Loader2 className="w-8 h-8 text-[#059669] animate-spin" />
-                    </div>
-                  )}
+                  <ImageUpload
+                    value={qrCodeUrl}
+                    onChange={setQrCodeUrl}
+                    bucket="payment-qrs"
+                    label={t('shopQRCode')}
+                    folder="qrs"
+                  />
                 </div>
-                {logoUrl && (
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={removeLogo}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl"
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    {t('removeLogo')}
-                  </Button>
-                )}
               </div>
 
               {/* Shop Info Section */}
-              <div className="flex-1 space-y-6">
+              <div className="space-y-6">
                 <div className="space-y-3">
                   <Label htmlFor="shop-name" className="text-sm font-bold text-[#475569]">{t('shopName')}</Label>
                   <Input 
@@ -166,27 +108,26 @@ export default function ShopAdminForm({ shop }: { shop: Shop }) {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <Label htmlFor="shop-phone" className="text-sm font-bold text-[#475569]">{t('shopPhone')}</Label>
-                    <Input 
-                      id="shop-phone" 
-                      value={phone} 
-                      onChange={(e) => setPhone(e.target.value)} 
-                      className="h-12 rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10"
-                      placeholder={t('shopPhone')}
-                    />
-                  </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="shop-address" className="text-sm font-bold text-[#475569]">{t('shopAddress')}</Label>
-                    <Input 
-                      id="shop-address" 
-                      value={address} 
-                      onChange={(e) => setAddress(e.target.value)} 
-                      className="h-12 rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10"
-                      placeholder={t('shopAddress')}
-                    />
-                  </div>
+                <div className="space-y-3">
+                  <Label htmlFor="shop-phone" className="text-sm font-bold text-[#475569]">{t('shopPhone')}</Label>
+                  <Input 
+                    id="shop-phone" 
+                    value={phone} 
+                    onChange={(e) => setPhone(e.target.value)} 
+                    className="h-12 rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10"
+                    placeholder={t('shopPhone')}
+                  />
+                </div>
+                
+                <div className="space-y-3">
+                  <Label htmlFor="shop-address" className="text-sm font-bold text-[#475569]">{t('shopAddress')}</Label>
+                  <Input 
+                    id="shop-address" 
+                    value={address} 
+                    onChange={(e) => setAddress(e.target.value)} 
+                    className="h-12 rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10"
+                    placeholder={t('shopAddress')}
+                  />
                 </div>
               </div>
             </div>

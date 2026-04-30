@@ -8,13 +8,16 @@ import { Badge } from '@/components/ui/badge';
 import { createTranslator } from '@/lib/i18n/translate';
 import { getLocale } from '@/lib/i18n/server';
 import { requireAuth } from '@/lib/auth';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { 
   User, 
   CreditCard, 
   Calendar, 
   Receipt, 
   Package,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
 
 interface OrderDetailWithProduct {
@@ -24,6 +27,7 @@ interface OrderDetailWithProduct {
   quantity: number;
   unit_id: string | null;
   price: number;
+  note?: string | null;
   product: {
     id: string;
     name: string;
@@ -58,7 +62,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   const { data: detailsData, error: detailsError } = await supabase
     .from('order_detail')
-    .select('id, order_id, product_id, quantity, unit_id, price, product:product_id(id, name)')
+    .select('id, order_id, product_id, quantity, unit_id, price, note, product:product_id(id, name)')
     .eq('order_id', order.id);
 
   const details = (detailsData ?? []) as OrderDetailWithProduct[];
@@ -67,6 +71,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
+      <Button
+        variant="ghost"
+        asChild
+        className="h-10 w-fit rounded-xl px-3 text-[#475569] hover:bg-white hover:text-[#064E3B] cursor-pointer"
+      >
+        <Link href="/orders">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          {t('backToOrders')}
+        </Link>
+      </Button>
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-3 mb-2">
@@ -153,12 +168,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 ${debtImpact.toLocaleString()}
               </span>
             </div>
-            <div className="flex justify-between items-center py-2 border-t border-white/10">
-              <span className="text-emerald-100/70 font-semibold">{t('customerDebtAfterOrder')}</span>
-              <span className={`text-xl font-black ${customerDebtAfterOrder > 0 ? 'text-red-300' : 'text-emerald-300'}`}>
-                ${customerDebtAfterOrder.toLocaleString()}
-              </span>
-            </div>
+            {order.customer_id && (
+              <div className="flex justify-between items-center py-2 border-t border-white/10">
+                <span className="text-emerald-100/70 font-semibold">{t('customerDebtAfterOrder')}</span>
+                <span className={`text-xl font-black ${customerDebtAfterOrder > 0 ? 'text-red-300' : 'text-emerald-300'}`}>
+                  ${customerDebtAfterOrder.toLocaleString()}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -177,6 +194,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <TableHeader className="bg-[#F8FAFC]">
               <TableRow className="hover:bg-transparent border-b border-[#F1F5F9]">
                 <TableHead className="px-8 py-4 font-bold text-[#475569]">{t('product')}</TableHead>
+                <TableHead className="py-4 font-bold text-[#475569]">{t('note')}</TableHead>
                 <TableHead className="py-4 font-bold text-[#475569]">{t('quantity')}</TableHead>
                 <TableHead className="py-4 font-bold text-[#475569]">{t('price')}</TableHead>
                 <TableHead className="text-right px-8 py-4 font-bold text-[#475569]">{t('total')}</TableHead>
@@ -185,15 +203,20 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <TableBody>
               {detailsError || details.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-12 text-center text-[#94A3B8]">
+                  <TableCell colSpan={5} className="py-12 text-center text-[#94A3B8]">
                     {t('noOrderItems')}
                   </TableCell>
                 </TableRow>
               ) : (
                 details.map((detail) => (
                   <TableRow key={detail.id} className="hover:bg-[#F8FAFC] border-b border-[#F1F5F9]">
-                    <TableCell className="px-8 py-4 font-bold text-[#064E3B]">
-                      {detail.product?.name || t('unknownProduct')}
+                    <TableCell className="px-8 py-4">
+                      <div className="font-bold text-[#064E3B]">
+                        {detail.product?.name || t('unknownProduct')}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4 text-[#64748B] text-xs font-medium italic">
+                      {detail.note || '-'}
                     </TableCell>
                     <TableCell className="py-4 text-[#64748B] font-medium">x{detail.quantity}</TableCell>
                     <TableCell className="py-4 text-[#64748B] font-medium">${detail.price.toLocaleString()}</TableCell>

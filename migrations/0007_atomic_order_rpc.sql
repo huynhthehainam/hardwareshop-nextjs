@@ -28,7 +28,7 @@ BEGIN
   v_debt_delta := p_total_cost - p_deposit;
 
   -- Get current debt and calculate next debt
-  IF p_customer_id IS NOT NULL AND v_debt_delta <> 0 THEN
+  IF p_customer_id IS NOT NULL THEN
     SELECT debt INTO v_current_debt FROM public.customer WHERE id = p_customer_id;
     v_debt_after_order := COALESCE(v_current_debt, 0) + v_debt_delta;
   ELSE
@@ -53,20 +53,22 @@ BEGIN
   ) RETURNING id INTO v_order_id;
 
   -- Insert order details
-  FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(product_id UUID, quantity NUMERIC, price NUMERIC, unit_id UUID)
+  FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(product_id UUID, quantity NUMERIC, price NUMERIC, unit_id UUID, note TEXT)
   LOOP
     INSERT INTO public.order_detail (
       order_id, 
       product_id, 
       quantity, 
       price, 
-      unit_id
+      unit_id,
+      note
     ) VALUES (
       v_order_id, 
       v_item.product_id, 
       v_item.quantity, 
       v_item.price, 
-      v_item.unit_id
+      v_item.unit_id,
+      v_item.note
     );
   END LOOP;
 

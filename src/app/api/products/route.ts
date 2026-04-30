@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from('product')
       .select('*, unit:default_unit_id(*)', { count: 'exact' })
+      .is('deleted_at', null)
       .order('name', { ascending: true })
       .range(offset, offset + limit - 1);
 

@@ -10,7 +10,7 @@ export async function getShops() {
 
 export async function getProducts(shopId?: string) {
   const supabase = await createClient();
-  let query = supabase.from('product').select('*');
+  let query = supabase.from('product').select('*').is('deleted_at', null);
   if (shopId) {
     query = query.eq('shop_id', shopId);
   }
@@ -142,7 +142,8 @@ export async function createOrder(order: Partial<Order>, details: Partial<OrderD
       product_id: d.product_id,
       quantity: d.quantity,
       price: d.price,
-      unit_id: d.unit_id
+      unit_id: d.unit_id,
+      note: d.note
     }))
   });
     

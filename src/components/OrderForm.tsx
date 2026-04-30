@@ -8,12 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Product, Customer, CustomerDebtHistory, Order, Unit } from '@/types';
+import { Product, Customer, CustomerDebtHistory, Order, Unit, Shop } from '@/types';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { interpolateMessage } from '@/lib/i18n/translate';
 import CustomerSearch from './CustomerSearch';
+import ProductSearch from './ProductSearch';
+import { generateOrderPdf } from './OrderPDF';
+import { MoneyInput } from '@/components/ui/money-input';
 import { 
   User, 
   Package, 
@@ -22,7 +25,11 @@ import {
   Calculator, 
   CreditCard,
   CheckCircle2,
-  History
+  History,
+  LayoutGrid,
+  Printer,
+  Save,
+  FileText
 } from 'lucide-react';
 
 interface OrderItem {
@@ -30,6 +37,7 @@ interface OrderItem {
   quantity: number;
   unitId: string;
   price: number;
+  note?: string;
 }
 
 type OrderItemFieldValue = OrderItem[keyof OrderItem];
@@ -74,10 +82,12 @@ export default function OrderForm({
   products, 
   customers: initialCustomers,
   units,
+  shop,
 }: { 
   products: Product[], 
   customers: Customer[],
   units: Unit[],
+  shop: Shop | null,
 }) {
   const router = useRouter();
   const { locale, t } = useI18n();
@@ -86,15 +96,68 @@ export default function OrderForm({
   const [items, setItems] = useState<OrderItem[]>([]);
   const [deposit, setDeposit] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [submitMode, setSubmitMode] = useState<'submit_and_print' | 'submit_only' | 'print_only'>('submit_and_print');
   const [debtHistoryOpen, setDebtHistoryOpen] = useState(false);
   const [debtHistoryLoading, setDebtHistoryLoading] = useState(false);
   const [debtHistory, setDebtHistory] = useState<DebtHistoryEntry[]>([]);
   const [orderHistoryOpen, setOrderHistoryOpen] = useState(false);
   const [orderHistoryLoading, setOrderHistoryLoading] = useState(false);
   const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([]);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddProductId, setQuickAddProductId] = useState('');
+  const [quickAddRows, setQuickAddRows] = useState<{ size: number; quantity: number }[]>(
+    [{ size: 0, quantity: 1 }]
+  );
 
   const addItem = () => {
-    setItems([...items, { productId: '', quantity: 1, unitId: '', price: 0 }]);
+    setItems([...items, { productId: '', quantity: 1, unitId: '', price: 0, note: '' }]);
+  };
+
+  const handleQuickAddConfirm = () => {
+    if (!quickAddProductId) {
+      toast.error(t('errSelectProduct'));
+      return;
+    }
+    
+    const product = products.find(p => p.id === quickAddProductId);
+    if (!product) return;
+
+    const validRows = quickAddRows.filter(r => r.size > 0 && r.quantity > 0);
+    if (validRows.length === 0) {
+      toast.error(t('errAddItem'));
+      return;
+    }
+
+    const totalQuantity = validRows.reduce((acc, r) => acc + (r.size * r.quantity), 0);
+    const unit = units.find(u => u.id === product.default_unit_id);
+    const unitLabel = unit ? getUnitLabel(unit) : '';
+    const note = validRows.map(r => `${r.quantity}x${r.size}${unitLabel}`).join(';');
+
+    setItems([...items, {
+      productId: quickAddProductId,
+      quantity: totalQuantity,
+      unitId: product.default_unit_id || '',
+      price: product.default_price || 0,
+      note: note
+    }]);
+
+    setQuickAddOpen(false);
+    setQuickAddProductId('');
+    setQuickAddRows([{ size: 0, quantity: 1 }]);
+  };
+
+  const addQuickAddRow = () => {
+    setQuickAddRows([...quickAddRows, { size: 0, quantity: 1 }]);
+  };
+
+  const removeQuickAddRow = (index: number) => {
+    setQuickAddRows(quickAddRows.filter((_, i) => i !== index));
+  };
+
+  const updateQuickAddRow = (index: number, field: 'size' | 'quantity', value: number) => {
+    const newRows = [...quickAddRows];
+    newRows[index] = { ...newRows[index], [field]: value };
+    setQuickAddRows(newRows);
   };
 
   const removeItem = (index: number) => {
@@ -108,11 +171,9 @@ export default function OrderForm({
   };
 
   const getUnitLabel = (unit: Unit) => {
-    if (locale === 'vi' && unit.name_vi?.trim()) {
-      return unit.name_vi;
-    }
-
-    return unit.name;
+    const key = `unit_${unit.name}` as any;
+    const translated = t(key);
+    return translated === key ? unit.name : translated;
   };
 
   const handleProductChange = (index: number, productId: string) => {
@@ -179,6 +240,46 @@ export default function OrderForm({
     if (!customerId) return toast.error(t('errSelectCustomer'));
     if (items.length === 0) return toast.error(t('errAddItem'));
     
+    // Mode: Print Only (Draft)
+    if (submitMode === 'print_only') {
+      try {
+        const draftOrder: Order = {
+          id: 'DRAFT',
+          shop_id: shop?.id || '',
+          customer_id: customerId,
+          deposit,
+          total_cost: totalCost,
+          created_by: '',
+          created_at: new Date().toISOString(),
+        };
+
+        const details = items.map((item, idx) => ({
+          id: `draft-${idx}`,
+          order_id: 'DRAFT',
+          product_id: item.productId,
+          quantity: item.quantity,
+          unit_id: item.unitId,
+          price: item.price,
+          note: item.note,
+          product: { name: products.find(p => p.id === item.productId)?.name || '' }
+        }));
+
+        await generateOrderPdf({
+          order: draftOrder,
+          details,
+          customer: currentCustomer!,
+          products,
+          locale,
+          shop,
+        });
+        toast.success(t('generatingPdf'));
+        return;
+      } catch (err) {
+        toast.error(t('genericError'));
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const response = await fetch('/api/orders', {
@@ -188,7 +289,31 @@ export default function OrderForm({
       });
       
       if (response.ok) {
+        const { order, details } = await response.json();
+        
         toast.success(t('orderCreated'));
+
+        if (submitMode === 'submit_and_print') {
+          try {
+            // Add product name to details for PDF
+            const detailsWithProduct = details.map((d: any) => ({
+              ...d,
+              product: { name: products.find(p => p.id === d.product_id)?.name || '' }
+            }));
+
+            await generateOrderPdf({
+              order,
+              details: detailsWithProduct,
+              customer: currentCustomer!,
+              products,
+              locale,
+              shop,
+            });
+          } catch (pdfErr) {
+            console.error('PDF generation failed after submit', pdfErr);
+          }
+        }
+
         router.push('/orders');
       } else {
         const errorData = await response.json();
@@ -237,10 +362,10 @@ export default function OrderForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 max-w-6xl mx-auto">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <form onSubmit={handleSubmit} className="space-y-8 max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Customer & Details */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-8 space-y-8">
           <Card className="border-none shadow-lg rounded-3xl overflow-hidden bg-white">
             <CardHeader className="bg-[#F8FAFC] border-b border-[#F1F5F9] px-8 py-6">
               <div className="flex items-center space-x-3">
@@ -306,10 +431,21 @@ export default function OrderForm({
                 </div>
                 <CardTitle className="text-xl font-bold text-[#064E3B]">{t('orderItems')}</CardTitle>
               </div>
-              <Button type="button" onClick={addItem} className="bg-[#059669] hover:bg-[#047857] text-white rounded-xl px-4 h-10 cursor-pointer shadow-md shadow-emerald-600/20">
-                <Plus className="w-4 h-4 mr-2" />
-                {t('addItem')}
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => setQuickAddOpen(true)} 
+                  className="border-[#059669] text-[#059669] hover:bg-[#ECFDF5] rounded-xl px-4 h-10 cursor-pointer shadow-sm"
+                >
+                  <LayoutGrid className="w-4 h-4 mr-2" />
+                  {t('quickAdd')}
+                </Button>
+                <Button type="button" onClick={addItem} className="bg-[#059669] hover:bg-[#047857] text-white rounded-xl px-4 h-10 cursor-pointer shadow-md shadow-emerald-600/20">
+                  <Plus className="w-4 h-4 mr-2" />
+                  {t('addItem')}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -317,10 +453,10 @@ export default function OrderForm({
                   <TableHeader className="bg-[#F8FAFC]">
                     <TableRow className="hover:bg-transparent border-b border-[#F1F5F9]">
                       <TableHead className="px-8 py-4 font-bold text-[#475569]">{t('product')}</TableHead>
-                      <TableHead className="w-28 py-4 font-bold text-[#475569]">{t('qty')}</TableHead>
-                      <TableHead className="w-40 py-4 font-bold text-[#475569]">{t('unit')}</TableHead>
-                      <TableHead className="w-36 py-4 font-bold text-[#475569]">{t('price')}</TableHead>
-                      <TableHead className="w-36 text-right px-8 py-4 font-bold text-[#475569]">{t('subtotal')}</TableHead>
+                      <TableHead className="w-24 py-4 font-bold text-[#475569]">{t('qty')}</TableHead>
+                      <TableHead className="w-36 py-4 font-bold text-[#475569]">{t('unit')}</TableHead>
+                      <TableHead className="w-44 py-4 font-bold text-[#475569]">{t('price')}</TableHead>
+                      <TableHead className="w-48 text-right px-8 py-4 font-bold text-[#475569]">{t('subtotal')}</TableHead>
                       <TableHead className="w-16 py-4"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -328,19 +464,19 @@ export default function OrderForm({
                     {items.map((item, index) => (
                       <TableRow key={index} className="hover:bg-[#F8FAFC] border-b border-[#F1F5F9] group">
                         <TableCell className="px-8 py-4">
-                          <Select 
-                            value={item.productId} 
-                            onValueChange={(val) => handleProductChange(index, val)}
-                          >
-                            <SelectTrigger className="rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10">
-                              <SelectValue placeholder={t('productPlaceholder')} />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                              {products.map(p => (
-                                <SelectItem key={p.id} value={p.id} className="cursor-pointer">{p.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <ProductSearch 
+                            products={products}
+                            selectedId={item.productId}
+                            onSelect={(val) => handleProductChange(index, val)}
+                          />
+                          <div className="mt-2">
+                            <Input
+                              placeholder={t('notePlaceholder')}
+                              className="h-8 text-xs rounded-lg border-[#E2E8F0] focus:ring-[#059669]/10 italic"
+                              value={item.note || ''}
+                              onChange={(e) => updateItem(index, 'note', e.target.value)}
+                            />
+                          </div>
                         </TableCell>
                         <TableCell className="py-4">
                           <Input 
@@ -368,15 +504,13 @@ export default function OrderForm({
                           </Select>
                         </TableCell>
                         <TableCell className="py-4">
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] font-bold">$</span>
-                            <Input 
-                              type="number" 
-                              className="pl-7 rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10"
-                              value={item.price} 
-                              onChange={(e) => updateItem(index, 'price', Number(e.target.value))}
-                            />
-                          </div>
+                          <MoneyInput 
+                            className="rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10"
+                            value={item.price} 
+                            onValueChange={(val) => updateItem(index, 'price', val)}
+                            currencySymbol="$"
+                            symbolClassName="text-[#94A3B8]"
+                          />
                         </TableCell>
                         <TableCell className="text-right px-8 py-4 font-extrabold text-[#064E3B]">
                           ${(item.quantity * item.price).toLocaleString()}
@@ -412,7 +546,7 @@ export default function OrderForm({
         </div>
 
         {/* Right Column: Summary */}
-        <div className="space-y-8">
+        <div className="lg:col-span-4 space-y-8">
           <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-[#064E3B] text-white sticky top-28">
             <CardHeader className="bg-[#059669] px-8 py-6 border-b border-white/10">
               <div className="flex items-center space-x-3">
@@ -430,18 +564,29 @@ export default function OrderForm({
                 </div>
                 
                 <div className="pt-4 border-t border-white/10">
-                  <Label htmlFor="deposit" className="text-sm font-bold text-emerald-100/70 block mb-3 flex items-center">
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    {t('paymentReceivedDeposit')}
-                  </Label>
+                  <div className="flex justify-between items-center mb-3">
+                    <Label htmlFor="deposit" className="text-sm font-bold text-emerald-100/70 flex items-center">
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      {t('paymentReceivedDeposit')}
+                    </Label>
+                    <Button 
+                      type="button"
+                      variant="ghost" 
+                      size="sm"
+                      className="h-7 px-3 text-[10px] uppercase tracking-wider font-black bg-white/10 hover:bg-white/20 text-white border-none rounded-lg transition-colors cursor-pointer"
+                      onClick={() => setDeposit(totalCost)}
+                    >
+                      {t('payFull')}
+                    </Button>
+                  </div>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 font-black text-xl">$</span>
-                    <Input 
+                    <MoneyInput 
                       id="deposit" 
-                      type="number" 
                       className="bg-white/10 border-none text-white text-2xl font-black h-14 pl-10 rounded-2xl focus:ring-2 focus:ring-white/20 placeholder:text-white/20" 
                       value={deposit} 
-                      onChange={(e) => setDeposit(Number(e.target.value))} 
+                      onValueChange={setDeposit} 
+                      currencySymbol="$"
+                      symbolClassName="text-white/40 font-black text-xl left-4"
                     />
                   </div>
                 </div>
@@ -466,10 +611,39 @@ export default function OrderForm({
                 </div>
               </div>
 
+              <div className="space-y-3">
+                <Label className="text-xs font-bold text-emerald-100/50 uppercase tracking-widest">{t('submitMode')}</Label>
+                <Select value={submitMode} onValueChange={(val: any) => setSubmitMode(val)}>
+                  <SelectTrigger className="bg-white/10 border-none text-white h-12 rounded-xl focus:ring-white/20 cursor-pointer">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-none shadow-2xl bg-white text-[#064E3B]">
+                    <SelectItem value="submit_and_print" className="cursor-pointer">
+                      <div className="flex items-center">
+                        <Printer className="w-4 h-4 mr-2 text-[#059669]" />
+                        {t('submitAndPrint')}
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="submit_only" className="cursor-pointer">
+                      <div className="flex items-center">
+                        <Save className="w-4 h-4 mr-2 text-[#059669]" />
+                        {t('submitOnly')}
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="print_only" className="cursor-pointer">
+                      <div className="flex items-center">
+                        <FileText className="w-4 h-4 mr-2 text-orange-500" />
+                        {t('printOnly')}
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button 
                 type="submit" 
                 size="lg" 
-                className="w-full h-16 bg-[#F97316] hover:bg-[#EA580C] text-white font-black text-xl rounded-2xl shadow-2xl shadow-orange-900/40 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                className={`w-full h-16 ${submitMode === 'print_only' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#F97316] hover:bg-[#EA580C]'} text-white font-black text-xl rounded-2xl shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer`}
                 disabled={loading}
               >
                 {loading ? (
@@ -482,8 +656,10 @@ export default function OrderForm({
                   </span>
                 ) : (
                   <span className="flex items-center">
-                    <CheckCircle2 className="w-6 h-6 mr-2" />
-                    {t('confirmOrder')}
+                    {submitMode === 'submit_and_print' && <Printer className="w-6 h-6 mr-2" />}
+                    {submitMode === 'submit_only' && <CheckCircle2 className="w-6 h-6 mr-2" />}
+                    {submitMode === 'print_only' && <FileText className="w-6 h-6 mr-2" />}
+                    {submitMode === 'print_only' ? t('printOnly') : t('confirmOrder')}
                   </span>
                 )}
               </Button>
@@ -497,7 +673,7 @@ export default function OrderForm({
       </div>
 
       <Dialog open={debtHistoryOpen} onOpenChange={setDebtHistoryOpen}>
-        <DialogContent className="max-w-3xl overflow-hidden rounded-2xl p-0">
+        <DialogContent className="max-w-[96vw] overflow-hidden rounded-2xl p-0 sm:max-w-[1100px]">
           <DialogHeader className="border-b border-[#F1F5F9] bg-[#F8FAFC] px-6 py-5">
             <DialogTitle className="text-xl font-bold text-[#064E3B]">{t('debtHistory')}</DialogTitle>
             <DialogDescription>{t('debtHistorySubtitle')}</DialogDescription>
@@ -540,7 +716,7 @@ export default function OrderForm({
       </Dialog>
 
       <Dialog open={orderHistoryOpen} onOpenChange={setOrderHistoryOpen}>
-        <DialogContent className="max-w-4xl overflow-hidden rounded-2xl p-0">
+        <DialogContent className="max-w-[96vw] overflow-hidden rounded-2xl p-0 sm:max-w-[1240px]">
           <DialogHeader className="border-b border-[#F1F5F9] bg-[#F8FAFC] px-6 py-5">
             <DialogTitle className="text-xl font-bold text-[#064E3B]">{t('orderHistory')}</DialogTitle>
             <DialogDescription>{t('orderHistorySubtitle')}</DialogDescription>
@@ -595,6 +771,121 @@ export default function OrderForm({
                 )}
               </TableBody>
             </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={quickAddOpen} onOpenChange={setQuickAddOpen}>
+        <DialogContent className="max-w-2xl overflow-hidden rounded-2xl p-0">
+          <DialogHeader className="border-b border-[#F1F5F9] bg-[#F8FAFC] px-6 py-5">
+            <DialogTitle className="text-xl font-bold text-[#064E3B]">{t('templateAdd')}</DialogTitle>
+            <DialogDescription>{t('quickActionsSubtitle')}</DialogDescription>
+          </DialogHeader>
+          <div className="p-6 space-y-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-bold text-[#475569]">{t('product')}</Label>
+              <ProductSearch 
+                products={products}
+                selectedId={quickAddProductId}
+                onSelect={setQuickAddProductId}
+              />
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-bold text-[#475569]">{t('orderLineItems')}</Label>
+                <Button 
+                  type="button" 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={addQuickAddRow}
+                  className="rounded-lg border-[#D1FAE5] bg-[#ECFDF5] text-[#047857] hover:bg-[#D1FAE5]"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  {t('addItem')}
+                </Button>
+              </div>
+              
+              <div className="border rounded-xl overflow-hidden border-[#F1F5F9]">
+                <Table>
+                  <TableHeader className="bg-[#F8FAFC]">
+                    <TableRow className="border-b border-[#F1F5F9] hover:bg-transparent">
+                      <TableHead className="font-bold text-[#475569]">{t('size')}</TableHead>
+                      <TableHead className="font-bold text-[#475569]">{t('qty')}</TableHead>
+                      <TableHead className="font-bold text-[#475569]">{t('unit')}</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {quickAddRows.map((row, index) => (
+                      <TableRow key={index} className="border-b border-[#F1F5F9] hover:bg-transparent">
+                        <TableCell className="py-2">
+                          <Input 
+                            type="number" 
+                            value={row.size} 
+                            onChange={(e) => updateQuickAddRow(index, 'size', Number(e.target.value))}
+                            className="rounded-lg h-9"
+                          />
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <Input 
+                            type="number" 
+                            value={row.quantity} 
+                            onChange={(e) => updateQuickAddRow(index, 'quantity', Number(e.target.value))}
+                            className="rounded-lg h-9"
+                          />
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <span className="text-sm text-[#64748B]">
+                            {(() => {
+                              const product = products.find(p => p.id === quickAddProductId);
+                              const unit = units.find(u => u.id === product?.default_unit_id);
+                              return unit ? getUnitLabel(unit) : '';
+                            })()}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => removeQuickAddRow(index)}
+                            disabled={quickAddRows.length === 1}
+                            className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#F1F5F9]">
+              <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#F1F5F9]">
+                <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('totalQuantity')}</p>
+                <p className="text-xl font-black text-[#064E3B] mt-1">
+                  {quickAddRows.reduce((acc, r) => acc + (r.size * r.quantity), 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#F1F5F9]">
+                <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('totalCost')}</p>
+                <p className="text-xl font-black text-[#059669] mt-1">
+                  ${(quickAddRows.reduce((acc, r) => acc + (r.size * r.quantity), 0) * (products.find(p => p.id === quickAddProductId)?.default_price || 0)).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setQuickAddOpen(false)} className="rounded-xl px-6">
+                {t('cancel')}
+              </Button>
+              <Button type="button" onClick={handleQuickAddConfirm} className="bg-[#059669] hover:bg-[#047857] text-white rounded-xl px-8 shadow-md shadow-emerald-600/20 font-bold">
+                {t('confirm')}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

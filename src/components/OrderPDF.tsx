@@ -8,7 +8,7 @@ import type { Locale } from '@/lib/i18n/config';
 
 type OrderPdfParams = {
   order: Order;
-  details: OrderDetail[];
+  details: (OrderDetail & { product?: { name: string } | null })[];
   customer: Customer;
   products: Product[];
   locale: Locale;
@@ -30,7 +30,7 @@ const FONT_FILES = {
 let fontCachePromise: Promise<{ normal: string; bold: string }> | null = null;
 
 function formatCurrency(value: number) {
-  return `$${value.toLocaleString()}`;
+  return value.toLocaleString();
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer) {
@@ -115,10 +115,14 @@ export async function generateOrderPdf({
   await registerFonts(doc);
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 40;
   const contentWidth = pageWidth - margin * 2;
   let cursorY = margin;
+  const hasQRCode = Boolean(shop?.qr_code_url && shop.qr_code_url.trim() !== '');
+  const headerImageUrl = hasQRCode ? shop?.qr_code_url : shop?.logo_url;
+  const headerImageSize = hasQRCode ? 62 : 54;
+  const headerImageX = pageWidth - margin - headerImageSize;
+  const shopTextWidth = headerImageUrl ? contentWidth - headerImageSize - 18 : contentWidth;
 
   doc.setFont(FONT_FAMILY, 'bold');
   doc.setFontSize(20);
@@ -132,7 +136,7 @@ export async function generateOrderPdf({
   let shopInfoY = cursorY + 18;
 
   if (shop?.address) {
-    const addressLines = doc.splitTextToSize(shop.address, contentWidth - 90);
+    const addressLines = doc.splitTextToSize(shop.address, shopTextWidth);
     doc.text(addressLines, margin, shopInfoY);
     shopInfoY += addressLines.length * 12;
   }
@@ -142,44 +146,49 @@ export async function generateOrderPdf({
     shopInfoY += 12;
   }
 
-  if (shop?.logo_url) {
+  if (headerImageUrl) {
     try {
-      const logoDataUrl = await loadImageAsDataUrl(shop.logo_url);
-      doc.addImage(logoDataUrl, 'PNG', pageWidth - margin - 60, cursorY - 6, 60, 60);
+      const imageDataUrl = await loadImageAsDataUrl(headerImageUrl);
+      doc.addImage(
+        imageDataUrl,
+        'PNG',
+        headerImageX,
+        cursorY - 4,
+        headerImageSize,
+        headerImageSize
+      );
     } catch {
-      // Ignore logo failures so the invoice can still download.
+      // Ignore failures
     }
   }
 
   doc.setDrawColor('#059669');
   doc.setLineWidth(1.5);
-  doc.line(margin, Math.max(shopInfoY, cursorY + 70), pageWidth - margin, Math.max(shopInfoY, cursorY + 70));
-  cursorY = Math.max(shopInfoY, cursorY + 70) + 28;
+  const headerBottomY = Math.max(shopInfoY, cursorY + headerImageSize);
+  doc.line(margin, headerBottomY, pageWidth - margin, headerBottomY);
+  cursorY = headerBottomY + 22;
 
   doc.setFont(FONT_FAMILY, 'bold');
-  doc.setFontSize(24);
+  doc.setFontSize(20);
   doc.setTextColor('#064E3B');
   doc.text(t('invoiceTitle'), margin, cursorY);
 
   doc.setFont(FONT_FAMILY, 'normal');
   doc.setFontSize(10);
   doc.setTextColor('#64748B');
-  doc.text(`${t('orderLabel')} #${order.id.slice(0, 8).toUpperCase()}`, margin, cursorY + 18);
   doc.text(
     `${t('date')}: ${new Date(order.created_at).toLocaleDateString(dateLocale)}`,
     pageWidth - margin,
-    cursorY + 18,
+    cursorY,
     { align: 'right' }
   );
 
-  cursorY += 52;
+  cursorY += 30;
 
   doc.setFont(FONT_FAMILY, 'bold');
   doc.setFontSize(12);
   doc.setTextColor('#0F172A');
-  doc.text(t('billTo'), margin, cursorY);
 
-  cursorY += 18;
   doc.setFont(FONT_FAMILY, 'normal');
   doc.setFontSize(10);
   doc.setTextColor('#64748B');
@@ -194,11 +203,12 @@ export async function generateOrderPdf({
     startY: cursorY,
     margin: { left: margin, right: margin },
     theme: 'plain',
-    head: [[t('product'), t('qty'), t('price'), t('total')]],
+    head: [[t('product'), t('note'), t('qty'), t('price'), t('total')]],
     body: details.map((detail) => {
-      const product = products.find((item) => item.id === detail.product_id);
+      const name = detail.product?.name || products.find((item) => item.id === detail.product_id)?.name || t('unknownProduct');
       return [
-        product?.name || t('unknownProduct'),
+        name,
+        detail.note || '-',
         String(detail.quantity),
         formatCurrency(detail.price),
         formatCurrency(detail.quantity * detail.price),
@@ -207,9 +217,9 @@ export async function generateOrderPdf({
     styles: {
       font: FONT_FAMILY,
       fontStyle: 'normal',
-      fontSize: 10,
+      fontSize: 9.5,
       textColor: '#334155',
-      cellPadding: { top: 8, right: 8, bottom: 8, left: 8 },
+      cellPadding: { top: 7, right: 7, bottom: 7, left: 7 },
       lineColor: '#F1F5F9',
       lineWidth: { bottom: 1 },
     },
@@ -218,6 +228,7 @@ export async function generateOrderPdf({
       textColor: '#0F172A',
       font: FONT_FAMILY,
       fontStyle: 'bold',
+      fontSize: 9.5,
       lineColor: '#E2E8F0',
       lineWidth: { bottom: 1 },
     },
@@ -226,70 +237,66 @@ export async function generateOrderPdf({
       fontStyle: 'normal',
     },
     columnStyles: {
-      0: { cellWidth: contentWidth * 0.45 },
-      1: { cellWidth: contentWidth * 0.15, halign: 'center' },
-      2: { cellWidth: contentWidth * 0.2, halign: 'right' },
-      3: { cellWidth: contentWidth * 0.2, halign: 'right', fontStyle: 'bold' },
+      0: { cellWidth: contentWidth * 0.32 },
+      1: { cellWidth: contentWidth * 0.2, fontStyle: 'italic', textColor: '#64748B' },
+      2: { cellWidth: contentWidth * 0.14, halign: 'center' },
+      3: { cellWidth: contentWidth * 0.15, halign: 'right' },
+      4: { cellWidth: contentWidth * 0.19, halign: 'right', fontStyle: 'bold' },
+    },
+    didParseCell: (data) => {
+      if (data.section !== 'head') {
+        return;
+      }
+
+      if (data.column.index === 2) {
+        data.cell.styles.halign = 'center';
+        return;
+      }
+
+      if (data.column.index === 3 || data.column.index === 4) {
+        data.cell.styles.halign = 'right';
+      }
     },
   });
 
-  cursorY = (doc.lastAutoTable?.finalY ?? cursorY) + 28;
-  const summaryX = pageWidth - margin - 250;
-  const summaryWidth = 250;
-  const summaryLineHeight = 18;
+  cursorY = (doc.lastAutoTable?.finalY ?? cursorY) + 18;
+  const summaryX = pageWidth - margin - 220;
+  const summaryWidth = 220;
+  const summaryLineHeight = 15;
   const summaryRows = [
     { label: `${t('subtotal')}:`, value: formatCurrency(order.total_cost) },
     { label: `${t('depositLabel')}:`, value: `-${order.deposit.toLocaleString()}` },
   ];
-  const summaryHeight = 88;
+  const summaryHeight = 72;
 
   doc.setFillColor('#F8FAFC');
-  doc.roundedRect(summaryX, cursorY, summaryWidth, summaryHeight, 12, 12, 'F');
+  doc.roundedRect(summaryX, cursorY, summaryWidth, summaryHeight, 10, 10, 'F');
 
-  let summaryY = cursorY + 24;
+  let summaryY = cursorY + 19;
 
   doc.setFont(FONT_FAMILY, 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(9.5);
   doc.setTextColor('#64748B');
 
   summaryRows.forEach((row) => {
-    doc.text(row.label, summaryX + 16, summaryY);
-    doc.text(row.value, summaryX + summaryWidth - 16, summaryY, { align: 'right' });
+    doc.text(row.label, summaryX + 14, summaryY);
+    doc.text(row.value, summaryX + summaryWidth - 14, summaryY, { align: 'right' });
     summaryY += summaryLineHeight;
   });
 
-  doc.setDrawColor('#E2E8F0');
-  doc.setLineWidth(1);
-  doc.line(summaryX + 16, summaryY + 2, summaryX + summaryWidth - 16, summaryY + 2);
+  summaryY += 5;
+  doc.setFont(FONT_FAMILY, 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor('#64748B');
+  doc.text(`${t('amountDue')}:`, summaryX + 14, summaryY);
 
-  summaryY += 22;
-  doc.setFont(FONT_FAMILY, 'bold');
-  doc.setFontSize(14);
-  doc.setTextColor('#064E3B');
-  doc.text(`${t('amountDue')}:`, summaryX + 16, summaryY);
-
-  doc.setTextColor('#059669');
-  doc.setFontSize(16);
+  doc.setTextColor('#64748B');
   doc.text(
     formatCurrency(order.total_cost - order.deposit),
-    summaryX + summaryWidth - 16,
+    summaryX + summaryWidth - 14,
     summaryY,
     { align: 'right' }
   );
-
-  const footerY = pageHeight - 44;
-  doc.setDrawColor('#F1F5F9');
-  doc.setLineWidth(1);
-  doc.line(margin, footerY - 18, pageWidth - margin, footerY - 18);
-
-  doc.setFont(FONT_FAMILY, 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor('#94A3B8');
-  doc.text(t('thankYouForBusiness'), pageWidth / 2, footerY, { align: 'center' });
-  doc.setFontSize(8);
-  doc.text(`${shop?.name || 'Hardware Shop'}${shop?.phone ? ` - ${shop.phone}` : ''}`, pageWidth / 2, footerY + 12, {
-    align: 'center',
-  });
 
   doc.save(`invoice-${order.id.slice(0, 8)}.pdf`);
 }

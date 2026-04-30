@@ -1,6 +1,6 @@
 import { createClient } from './client';
 
-export type BucketName = 'shop-logos' | 'product-images' | 'order-attachments';
+export type BucketName = 'shop-logos' | 'product-images' | 'order-attachments' | 'payment-qrs';
 
 /**
  * Uploads a file to a specified Supabase storage bucket.
@@ -21,8 +21,8 @@ export async function uploadFile(bucket: BucketName, path: string, file: File) {
 
   if (error) throw error;
 
-  // For shop-logos and product-images, we always want the public URL
-  if (bucket === 'shop-logos' || bucket === 'product-images') {
+  // For shop-logos, product-images, and payment-qrs, we always want the public URL
+  if (bucket === 'shop-logos' || bucket === 'product-images' || bucket === 'payment-qrs') {
     const { data: { publicUrl } } = supabase.storage
       .from(bucket)
       .getPublicUrl(data.path);

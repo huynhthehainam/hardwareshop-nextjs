@@ -15,6 +15,7 @@ export interface Shop {
   phone?: string | null;
   address?: string | null;
   logo_url?: string | null;
+  qr_code_url?: string | null;
 }
 
 export interface UserShop {
@@ -26,7 +27,6 @@ export interface UserShop {
 export interface Unit {
   id: string;
   name: string;
-  name_vi?: string | null;
   type: string;
   is_main: boolean;
   conversion_rate: number;
@@ -38,6 +38,7 @@ export interface Product {
   default_unit_id: string | null;
   default_price: number;
   image_url?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface Customer {
@@ -76,4 +77,5 @@ export interface OrderDetail {
   quantity: number;
   unit_id: string | null;
   price: number;
+  note?: string | null;
 }

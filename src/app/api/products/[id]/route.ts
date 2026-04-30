@@ -58,7 +58,7 @@ export async function DELETE(
     const supabase = await createClient();
     let query = supabase
       .from('product')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
 
     if (systemRole !== 'system_admin') {
