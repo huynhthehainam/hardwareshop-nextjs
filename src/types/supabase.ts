@@ -21,6 +21,7 @@ export type Database = {
           is_frequent_customer: boolean
           name: string
           phone: string | null
+          shop_id: string
         }
         Insert: {
           debt?: number | null
@@ -28,6 +29,7 @@ export type Database = {
           is_frequent_customer?: boolean
           name: string
           phone?: string | null
+          shop_id: string
         }
         Update: {
           debt?: number | null
@@ -35,8 +37,17 @@ export type Database = {
           is_frequent_customer?: boolean
           name?: string
           phone?: string | null
+          shop_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customer_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customer_debt_history: {
         Row: {

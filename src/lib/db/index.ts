@@ -19,12 +19,15 @@ export async function getProducts(shopId?: string) {
   return data as any[];
 }
 
-export async function getCustomers() {
+export async function getCustomers(shopId?: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('customer')
-    .select('*')
-    .order('name', { ascending: true });
+  let query = supabase.from('customer').select('*');
+  
+  if (shopId) {
+    query = query.eq('shop_id', shopId);
+  }
+  
+  const { data, error } = await query.order('name', { ascending: true });
   if (error) throw error;
   return data as Customer[];
 }

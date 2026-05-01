@@ -47,6 +47,7 @@ export interface Product {
 
 export interface Customer {
   id: string;
+  shop_id: string;
   phone: string;
   name: string;
   debt: number;
