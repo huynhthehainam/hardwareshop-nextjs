@@ -523,7 +523,7 @@ export default function OrderForm({
                           <MoneyInput 
                             className="rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10"
                             value={item.price} 
-                            onValueChange={(val) => updateItem(index, 'price', val)}
+                            onValueChange={(val) => updateItem(index, 'price', val ?? 0)}
                             currencySymbol="$"
                             symbolClassName="text-[#94A3B8]"
                           />
@@ -600,7 +600,7 @@ export default function OrderForm({
                       id="deposit" 
                       className="bg-white/10 border-none text-white text-2xl font-black h-14 pl-10 rounded-2xl focus:ring-2 focus:ring-white/20 placeholder:text-white/20" 
                       value={deposit} 
-                      onValueChange={setDeposit} 
+                      onValueChange={(val) => setDeposit(val ?? 0)} 
                       currencySymbol="$"
                       symbolClassName="text-white/40 font-black text-xl left-4"
                     />

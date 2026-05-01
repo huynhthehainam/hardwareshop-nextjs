@@ -176,7 +176,7 @@ export async function GET() {
 
   const zipBuffer = zip.build();
 
-  return new Response(zipBuffer, {
+  return new Response(zipBuffer as unknown as BodyInit, {
     headers: {
       'Content-Type': 'application/zip',
       'Content-Disposition': 'attachment; filename="hardware-shop-complete-clone.zip"',

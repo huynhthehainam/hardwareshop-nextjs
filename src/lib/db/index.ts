@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { Shop, Product, Customer, Order, OrderDetail, Unit } from '@/types';
+import { Shop, Product, Customer, Order, OrderDetail, Unit, CustomerDebtHistory } from '@/types';
 
 export async function getShops() {
   const supabase = await createClient();

@@ -2,8 +2,10 @@ import { defaultLocale, type Locale } from "./config"
 import { messages, type MessageKey } from "./messages"
 
 export function createTranslator(locale: Locale) {
-  return function t(key: MessageKey) {
-    return messages[locale]?.[key] ?? messages[defaultLocale][key] ?? key
+  return function t(key: MessageKey, params?: Record<string, string | number | boolean | null | undefined>) {
+    const message = messages[locale]?.[key] ?? messages[defaultLocale][key] ?? key
+    if (!params) return message
+    return interpolateMessage(message, params)
   }
 }
 

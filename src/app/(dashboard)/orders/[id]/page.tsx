@@ -65,7 +65,22 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     .select('id, order_id, product_id, quantity, unit_id, price, note, product:product_id(id, name)')
     .eq('order_id', order.id);
 
-  const details = (detailsData ?? []) as OrderDetailWithProduct[];
+  const details: OrderDetailWithProduct[] = (detailsData ?? []).map((d: unknown) => {
+    const item = d as {
+      id: string;
+      order_id: string;
+      product_id: string;
+      quantity: number;
+      unit_id: string;
+      price: number;
+      note: string;
+      product: unknown;
+    };
+    return {
+      ...item,
+      product: Array.isArray(item.product) ? item.product[0] : item.product
+    };
+  });
 
   const products = await getProducts(order.shop_id);
 

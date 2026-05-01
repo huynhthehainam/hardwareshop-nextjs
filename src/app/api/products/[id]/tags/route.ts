@@ -4,12 +4,13 @@ import { requireAuth } from '@/lib/auth';
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { shopId } = await requireAuth();
     if (!shopId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
+    const { id } = await params;
     const body = await request.json();
     const { tagIds } = body; // Array of tag IDs
 
@@ -19,7 +20,7 @@ export async function POST(
     const { data: product } = await supabase
       .from('product')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('shop_id', shopId)
       .single();
 
@@ -31,12 +32,12 @@ export async function POST(
     await supabase
       .from('product_tag_assignment')
       .delete()
-      .eq('product_id', params.id);
+      .eq('product_id', id);
 
     // Insert new assignments if any
     if (tagIds && tagIds.length > 0) {
       const assignments = tagIds.map((tagId: string) => ({
-        product_id: params.id,
+        product_id: id,
         tag_id: tagId
       }));
 
@@ -48,28 +49,31 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { shopId } = await requireAuth();
     if (!shopId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
+    const { id } = await params;
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('product_tag_assignment')
       .select('tag_id, product_tag(*)')
-      .eq('product_id', params.id);
+      .eq('product_id', id);
 
     if (error) throw error;
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

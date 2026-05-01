@@ -109,8 +109,10 @@ export async function GET(
     total_cost: order.total_cost,
     deposit: order.deposit,
     created_at: order.created_at,
-    customer_name:
-      Array.isArray(order.customer) ? order.customer[0]?.name : order.customer?.name ?? null,
+    customer_name: (() => {
+      const customer = order.customer as unknown;
+      return Array.isArray(customer) ? (customer[0] as { name: string })?.name : (customer as { name: string })?.name ?? null;
+    })(),
   }));
   
   return NextResponse.json({
