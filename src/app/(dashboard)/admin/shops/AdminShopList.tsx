@@ -15,6 +15,7 @@ import {
   Sparkles,
   ShieldCheck,
   BadgeCheck,
+  Database,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,8 @@ export default function AdminShopList() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
   const [editingShop, setEditingShop] = useState<Shop | null>(null);
   const [search, setSearch] = useState('');
   const [formData, setFormData] = useState({ name: '', phone: '', address: '' });
@@ -163,6 +166,45 @@ export default function AdminShopList() {
     }
   };
 
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importFile) {
+      toast.error(t('errSelectFile'));
+      return;
+    }
+    setSubmitting(true);
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', importFile);
+      formDataUpload.append('name', formData.name);
+      formDataUpload.append('phone', formData.phone);
+      formDataUpload.append('address', formData.address);
+
+      const response = await fetch('/api/admin/shops/import-sqlite', {
+        method: 'POST',
+        body: formDataUpload,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) throw new Error(result.error || 'Failed to import');
+
+      toast.success(t('importSuccess', { 
+        customerCount: result.customerCount,
+        productCount: result.productCount 
+      }));
+      setIsImportDialogOpen(false);
+      setImportFile(null);
+      resetForm();
+      fetchShops();
+    } catch (err: any) {
+      toast.error(err.message || t('importError'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleEdit = (shop: Shop) => {
     setEditingShop(shop);
     setFormData({
@@ -227,78 +269,167 @@ export default function AdminShopList() {
                 <p className="text-sm font-semibold text-white/75">{t('manageShopDetails')}</p>
                 <p className="mt-1 text-xl font-black">{filteredShops.length} {t('totalShops').toLowerCase()}</p>
               </div>
-              <Dialog
-                open={isDialogOpen}
-                onOpenChange={(open) => {
-                  setIsDialogOpen(open);
-                  if (!open) resetForm();
-                }}
-              >
-                <DialogTrigger asChild>
-                  <Button className="h-12 w-full rounded-2xl bg-white text-[#064E3B] shadow-lg transition-colors hover:bg-emerald-50 cursor-pointer">
-                    <Plus className="mr-2 h-5 w-5" />
-                    {t('addNewShop')}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="rounded-[2rem] border-none p-0 sm:max-w-[460px]">
-                  <DialogHeader className="border-b border-[#E2E8F0] px-6 py-5">
-                    <DialogTitle className="text-2xl font-black text-[#064E3B]">
-                      {editingShop ? t('editShop') : t('createNewShop')}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="name" className="text-sm font-bold text-[#475569]">
-                        {t('shopName')}
-                      </Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-sm font-bold text-[#475569]">
-                        {t('shopPhone')}
-                      </Label>
-                      <Input
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address" className="text-sm font-bold text-[#475569]">
-                        {t('shopAddress')}
-                      </Label>
-                      <Input
-                        id="address"
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
-                      />
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        type="submit"
-                        disabled={submitting}
-                        className="h-12 w-full rounded-2xl bg-[#059669] text-white shadow-md shadow-emerald-600/20 hover:bg-[#047857] cursor-pointer"
-                      >
-                        {submitting ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : editingShop ? (
-                          t('updateShop')
-                        ) : (
-                          t('createShop')
-                        )}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              <div className="flex flex-col gap-2">
+                <Dialog
+                  open={isDialogOpen}
+                  onOpenChange={(open) => {
+                    setIsDialogOpen(open);
+                    if (!open) resetForm();
+                  }}
+                >
+                  <DialogTrigger asChild>
+                    <Button className="h-12 w-full rounded-2xl bg-white text-[#064E3B] shadow-lg transition-colors hover:bg-emerald-50 cursor-pointer">
+                      <Plus className="mr-2 h-5 w-5" />
+                      {t('addNewShop')}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="rounded-[2rem] border-none p-0 sm:max-w-[460px]">
+                    <DialogHeader className="border-b border-[#E2E8F0] px-6 py-5">
+                      <DialogTitle className="text-2xl font-black text-[#064E3B]">
+                        {editingShop ? t('editShop') : t('createNewShop')}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="name" className="text-sm font-bold text-[#475569]">
+                          {t('shopName')}
+                        </Label>
+                        <Input
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone" className="text-sm font-bold text-[#475569]">
+                          {t('shopPhone')}
+                        </Label>
+                        <Input
+                          id="phone"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="address" className="text-sm font-bold text-[#475569]">
+                          {t('shopAddress')}
+                        </Label>
+                        <Input
+                          id="address"
+                          value={formData.address}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                          className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          type="submit"
+                          disabled={submitting}
+                          className="h-12 w-full rounded-2xl bg-[#059669] text-white shadow-md shadow-emerald-600/20 hover:bg-[#047857] cursor-pointer"
+                        >
+                          {submitting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : editingShop ? (
+                            t('updateShop')
+                          ) : (
+                            t('createShop')
+                          )}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog
+                  open={isImportDialogOpen}
+                  onOpenChange={(open) => {
+                    setIsImportDialogOpen(open);
+                    if (!open) {
+                      resetForm();
+                      setImportFile(null);
+                    }
+                  }}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="h-12 w-full rounded-2xl border-white/20 bg-white/10 text-white shadow-lg transition-colors hover:bg-white/20 cursor-pointer">
+                      <Database className="mr-2 h-5 w-5" />
+                      {t('importFromSqlite')}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="rounded-[2rem] border-none p-0 sm:max-w-[460px]">
+                    <DialogHeader className="border-b border-[#E2E8F0] px-6 py-5">
+                      <DialogTitle className="text-2xl font-black text-[#064E3B]">
+                        {t('importFromSqlite')}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleImport} className="space-y-5 px-6 py-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="import-file" className="text-sm font-bold text-[#475569]">
+                          {t('sqliteFile')}
+                        </Label>
+                        <Input
+                          id="import-file"
+                          type="file"
+                          accept=".db,.sqlite,.sqlite3"
+                          onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                          className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC] py-2"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="import-name" className="text-sm font-bold text-[#475569]">
+                          {t('shopName')}
+                        </Label>
+                        <Input
+                          id="import-name"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="import-phone" className="text-sm font-bold text-[#475569]">
+                          {t('shopPhone')}
+                        </Label>
+                        <Input
+                          id="import-phone"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="import-address" className="text-sm font-bold text-[#475569]">
+                          {t('shopAddress')}
+                        </Label>
+                        <Input
+                          id="import-address"
+                          value={formData.address}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                          className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          type="submit"
+                          disabled={submitting}
+                          className="h-12 w-full rounded-2xl bg-[#F97316] text-white shadow-md shadow-orange-600/20 hover:bg-[#EA580C] cursor-pointer"
+                        >
+                          {submitting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            t('importFromSqlite')
+                          )}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </div>
         </div>

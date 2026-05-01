@@ -131,7 +131,7 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  await params;
+  const { id } = await params;
   const { email, password, role } = await request.json();
 
   if (!email || !password || !role) {
@@ -158,7 +158,7 @@ export async function POST(
       .from('user_shops')
       .insert({
         user_id: userId,
-        shop_id: shopId,
+        shop_id: id,
         role
       });
 

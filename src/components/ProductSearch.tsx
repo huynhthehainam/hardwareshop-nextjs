@@ -19,6 +19,7 @@ import { Product } from '@/types';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
 
 interface Props {
   products: Product[];
