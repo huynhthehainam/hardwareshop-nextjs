@@ -19,83 +19,116 @@ function crc32(data: Uint8Array) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function buildZipFile(fileName: string, fileContents: string) {
-  const encoder = new TextEncoder();
-  const nameBytes = encoder.encode(fileName);
-  const fileBytes = encoder.encode(fileContents);
-  const crc = crc32(fileBytes);
-  const size = fileBytes.length;
-  const localHeaderSize = 30 + nameBytes.length;
-  const centralHeaderSize = 46 + nameBytes.length;
-  const localHeaderOffset = 0;
-  const centralDirOffset = localHeaderSize + size;
-  const centralDirSize = centralHeaderSize;
-  const totalSize = centralDirOffset + centralDirSize + 22;
-  const buffer = new Uint8Array(totalSize);
-  const view = new DataView(buffer.buffer);
-  let offset = 0;
+class ZipBuilder {
+  private files: { name: string; content: Uint8Array; crc: number; size: number; offset: number }[] = [];
+  private currentOffset = 0;
 
-  const writeUint32 = (value: number) => {
-    view.setUint32(offset, value, true);
-    offset += 4;
-  };
+  addFile(name: string, content: string | Uint8Array) {
+    const encoder = new TextEncoder();
+    const data = typeof content === 'string' ? encoder.encode(content) : content;
+    const crc = crc32(data);
+    const size = data.length;
+    const offset = this.currentOffset;
 
-  const writeUint16 = (value: number) => {
-    view.setUint16(offset, value, true);
-    offset += 2;
-  };
+    this.files.push({ name, content: data, crc, size, offset });
+    
+    // local header (30 + name) + content
+    const nameBytes = encoder.encode(name);
+    this.currentOffset += 30 + nameBytes.length + size;
+  }
 
-  const writeBytes = (bytes: Uint8Array) => {
-    buffer.set(bytes, offset);
-    offset += bytes.length;
-  };
+  build(): Uint8Array {
+    const encoder = new TextEncoder();
+    let centralDirSize = 0;
+    for (const file of this.files) {
+      const nameBytes = encoder.encode(file.name);
+      centralDirSize += 46 + nameBytes.length;
+    }
 
-  // Local file header
-  writeUint32(0x04034b50);
-  writeUint16(20);
-  writeUint16(0);
-  writeUint16(0);
-  writeUint16(0);
-  writeUint16(0);
-  writeUint32(crc);
-  writeUint32(size);
-  writeUint32(size);
-  writeUint16(nameBytes.length);
-  writeUint16(0);
-  writeBytes(nameBytes);
-  writeBytes(fileBytes);
+    const totalSize = this.currentOffset + centralDirSize + 22;
+    const buffer = new Uint8Array(totalSize);
+    const view = new DataView(buffer.buffer);
+    let pos = 0;
 
-  // Central directory header
-  writeUint32(0x02014b50);
-  writeUint16(20);
-  writeUint16(20);
-  writeUint16(0);
-  writeUint16(0);
-  writeUint16(0);
-  writeUint16(0);
-  writeUint32(crc);
-  writeUint32(size);
-  writeUint32(size);
-  writeUint16(nameBytes.length);
-  writeUint16(0);
-  writeUint16(0);
-  writeUint16(0);
-  writeUint16(0);
-  writeUint32(0);
-  writeUint32(localHeaderOffset);
-  writeBytes(nameBytes);
+    // Write Local File Headers and Data
+    for (const file of this.files) {
+      const nameBytes = encoder.encode(file.name);
+      
+      // signature
+      view.setUint32(pos, 0x04034b50, true); pos += 4;
+      view.setUint16(pos, 20, true); pos += 2; // version
+      view.setUint16(pos, 0, true); pos += 2; // flags
+      view.setUint16(pos, 0, true); pos += 2; // compression (none)
+      view.setUint16(pos, 0, true); pos += 2; // time
+      view.setUint16(pos, 0, true); pos += 2; // date
+      view.setUint32(pos, file.crc, true); pos += 4;
+      view.setUint32(pos, file.size, true); pos += 4; // compressed size
+      view.setUint32(pos, file.size, true); pos += 4; // uncompressed size
+      view.setUint16(pos, nameBytes.length, true); pos += 2;
+      view.setUint16(pos, 0, true); pos += 2; // extra field length
+      
+      buffer.set(nameBytes, pos); pos += nameBytes.length;
+      buffer.set(file.content, pos); pos += file.content.length;
+    }
 
-  // End of central directory record
-  writeUint32(0x06054b50);
-  writeUint16(0);
-  writeUint16(0);
-  writeUint16(1);
-  writeUint16(1);
-  writeUint32(centralDirSize);
-  writeUint32(centralDirOffset);
-  writeUint16(0);
+    const centralDirOffset = pos;
 
-  return buffer;
+    // Write Central Directory Headers
+    for (const file of this.files) {
+      const nameBytes = encoder.encode(file.name);
+      
+      // signature
+      view.setUint32(pos, 0x02014b50, true); pos += 4;
+      view.setUint16(pos, 20, true); pos += 2; // version made by
+      view.setUint16(pos, 20, true); pos += 2; // version needed
+      view.setUint16(pos, 0, true); pos += 2; // flags
+      view.setUint16(pos, 0, true); pos += 2; // compression
+      view.setUint16(pos, 0, true); pos += 2; // time
+      view.setUint16(pos, 0, true); pos += 2; // date
+      view.setUint32(pos, file.crc, true); pos += 4;
+      view.setUint32(pos, file.size, true); pos += 4;
+      view.setUint32(pos, file.size, true); pos += 4;
+      view.setUint16(pos, nameBytes.length, true); pos += 2;
+      view.setUint16(pos, 0, true); pos += 2; // extra field
+      view.setUint16(pos, 0, true); pos += 2; // comment
+      view.setUint16(pos, 0, true); pos += 2; // disk start
+      view.setUint16(pos, 0, true); pos += 2; // internal attr
+      view.setUint32(pos, 0, true); pos += 4; // external attr
+      view.setUint32(pos, file.offset, true); pos += 4; // local header offset
+      
+      buffer.set(nameBytes, pos); pos += nameBytes.length;
+    }
+
+    // End of central directory record
+    view.setUint32(pos, 0x06054b50, true); pos += 4;
+    view.setUint16(pos, 0, true); pos += 2; // disk number
+    view.setUint16(pos, 0, true); pos += 2; // central dir disk
+    view.setUint16(pos, this.files.length, true); pos += 2; // entries on disk
+    view.setUint16(pos, this.files.length, true); pos += 2; // total entries
+    view.setUint32(pos, centralDirSize, true); pos += 4;
+    view.setUint32(pos, centralDirOffset, true); pos += 4;
+    view.setUint16(pos, 0, true); pos += 2; // comment length
+
+    return buffer;
+  }
+}
+
+async function listAllFiles(supabase: any, bucket: string, path: string = ''): Promise<string[]> {
+  const { data, error } = await supabase.storage.from(bucket).list(path);
+  if (error) return [];
+
+  let files: string[] = [];
+  for (const item of data) {
+    const itemPath = path ? `${path}/${item.name}` : item.name;
+    if (item.id === null) {
+      // It's a directory
+      const subFiles = await listAllFiles(supabase, bucket, itemPath);
+      files = files.concat(subFiles);
+    } else {
+      files.push(itemPath);
+    }
+  }
+  return files;
 }
 
 export async function GET() {
@@ -106,50 +139,47 @@ export async function GET() {
   }
 
   const supabase = await createAdminClient();
-  const { data: tables, error } = await supabase
-    .from('information_schema.tables')
-    .select('table_schema,table_name')
-    .eq('table_type', 'BASE TABLE')
-    .not('table_schema', 'in', '(pg_catalog,information_schema,pg_toast)')
-    .order('table_schema', { ascending: true })
-    .order('table_name', { ascending: true });
+  const zip = new ZipBuilder();
 
-  if (error || !tables) {
-    return NextResponse.json({ error: error?.message ?? 'Unable to enumerate tables' }, { status: 500 });
+  // 1. Export Database Tables
+  const { data: tables, error: tableListError } = await supabase.rpc('get_table_names');
+  if (tableListError || !tables) {
+    return NextResponse.json({ error: tableListError?.message ?? 'Unable to enumerate tables' }, { status: 500 });
   }
 
   const exportTables = [];
-
   for (const table of tables as { table_schema: string; table_name: string }[]) {
-    const tableRef = `${table.table_schema}.${table.table_name}`;
-    const { data: rows, error: rowsError } = await supabase.from(tableRef).select('*');
-
-    if (rowsError) {
-      return NextResponse.json({ error: rowsError.message }, { status: 500 });
-    }
-
-    exportTables.push({
-      schema: table.table_schema,
-      name: table.table_name,
-      rows,
-    });
+    const { data: rows, error: rowsError } = await supabase.from(table.table_name).select('*');
+    if (rowsError) return NextResponse.json({ error: rowsError.message }, { status: 500 });
+    exportTables.push({ schema: table.table_schema, name: table.table_name, rows });
   }
 
-  const payload = JSON.stringify(
-    {
-      exported_at: new Date().toISOString(),
-      tables: exportTables,
-    },
-    null,
-    2
-  );
+  zip.addFile('database-export.json', JSON.stringify({
+    exported_at: new Date().toISOString(),
+    tables: exportTables,
+  }, null, 2));
 
-  const zip = buildZipFile('database-export.json', payload);
+  // 2. Export Storage Buckets
+  const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+  if (bucketError) return NextResponse.json({ error: bucketError.message }, { status: 500 });
 
-  return new Response(zip, {
+  for (const bucket of buckets) {
+    const files = await listAllFiles(supabase, bucket.name);
+    for (const filePath of files) {
+      const { data: fileData, error: downloadError } = await supabase.storage.from(bucket.name).download(filePath);
+      if (downloadError) continue; // Skip failed downloads
+
+      const arrayBuffer = await fileData.arrayBuffer();
+      zip.addFile(`storage/${bucket.name}/${filePath}`, new Uint8Array(arrayBuffer));
+    }
+  }
+
+  const zipBuffer = zip.build();
+
+  return new Response(zipBuffer, {
     headers: {
       'Content-Type': 'application/zip',
-      'Content-Disposition': 'attachment; filename="hardware-shop-database-export.zip"',
+      'Content-Disposition': 'attachment; filename="hardware-shop-complete-clone.zip"',
       'Cache-Control': 'no-store',
     },
   });

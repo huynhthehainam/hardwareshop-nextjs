@@ -40,6 +40,9 @@ export interface Product {
   price_for_frequent_customer?: number | null;
   image_url?: string | null;
   deleted_at?: string | null;
+  mass?: number | null;
+  mass_price?: number | null;
+  frequent_customer_sale_off?: number | null;
 }
 
 export interface Customer {

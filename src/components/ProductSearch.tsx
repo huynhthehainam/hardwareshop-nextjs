@@ -66,7 +66,22 @@ export default function ProductSearch({ products, selectedId, onSelect, placehol
                 >
                   <div className="flex flex-col">
                     <span className="font-bold text-[#064E3B]">{product.name}</span>
-                    <span className="text-xs text-[#64748B]">${product.default_price.toLocaleString()}</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(product as any).product_tag_assignment?.map((assignment: any) => (
+                        <Badge 
+                          key={assignment.tag_id}
+                          style={{ 
+                            backgroundColor: assignment.product_tag.color + '20', 
+                            color: assignment.product_tag.color, 
+                            borderColor: assignment.product_tag.color + '40' 
+                          }}
+                          className="px-1.5 py-0 text-[9px] font-bold rounded-md border shadow-none"
+                        >
+                          {assignment.product_tag.name}
+                        </Badge>
+                      ))}
+                    </div>
+                    <span className="text-xs text-[#64748B] mt-1">${product.default_price.toLocaleString()}</span>
                   </div>
                   <Check
                     className={cn(

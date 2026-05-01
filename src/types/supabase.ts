@@ -18,18 +18,21 @@ export type Database = {
         Row: {
           debt: number | null
           id: string
+          is_frequent_customer: boolean
           name: string
           phone: string | null
         }
         Insert: {
           debt?: number | null
           id?: string
+          is_frequent_customer?: boolean
           name: string
           phone?: string | null
         }
         Update: {
           debt?: number | null
           id?: string
+          is_frequent_customer?: boolean
           name?: string
           phone?: string | null
         }
@@ -181,8 +184,11 @@ export type Database = {
           default_price: number
           default_unit_id: string | null
           deleted_at: string | null
+          frequent_customer_sale_off: number | null
           id: string
           image_url: string | null
+          mass: number | null
+          mass_price: number | null
           name: string
           price_for_frequent_customer: number | null
           shop_id: string
@@ -191,8 +197,11 @@ export type Database = {
           default_price?: number
           default_unit_id?: string | null
           deleted_at?: string | null
+          frequent_customer_sale_off?: number | null
           id?: string
           image_url?: string | null
+          mass?: number | null
+          mass_price?: number | null
           name: string
           price_for_frequent_customer?: number | null
           shop_id: string
@@ -201,8 +210,11 @@ export type Database = {
           default_price?: number
           default_unit_id?: string | null
           deleted_at?: string | null
+          frequent_customer_sale_off?: number | null
           id?: string
           image_url?: string | null
+          mass?: number | null
+          mass_price?: number | null
           name?: string
           price_for_frequent_customer?: number | null
           shop_id?: string
@@ -224,33 +236,95 @@ export type Database = {
           },
         ]
       }
+      product_tag: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+          shop_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          shop_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          shop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_tag_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_tag_assignment: {
+        Row: {
+          product_id: string
+          tag_id: string
+        }
+        Insert: {
+          product_id: string
+          tag_id: string
+        }
+        Update: {
+          product_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_tag_assignment_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_tag_assignment_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "product_tag"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shops: {
         Row: {
           address: string | null
           created_at: string | null
           id: string
           logo_url: string | null
-          qr_code_url: string | null
           name: string
           phone: string | null
+          qr_code_url: string | null
         }
         Insert: {
           address?: string | null
           created_at?: string | null
           id?: string
           logo_url?: string | null
-          qr_code_url?: string | null
           name: string
           phone?: string | null
+          qr_code_url?: string | null
         }
         Update: {
           address?: string | null
           created_at?: string | null
           id?: string
           logo_url?: string | null
-          qr_code_url?: string | null
           name?: string
           phone?: string | null
+          qr_code_url?: string | null
         }
         Relationships: []
       }
@@ -319,6 +393,13 @@ export type Database = {
           p_total_cost: number
         }
         Returns: Json
+      }
+      get_table_names: {
+        Args: never
+        Returns: {
+          table_name: string
+          table_schema: string
+        }[]
       }
       is_system_admin: { Args: never; Returns: boolean }
     }

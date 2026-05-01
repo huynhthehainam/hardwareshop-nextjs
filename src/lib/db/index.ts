@@ -10,13 +10,13 @@ export async function getShops() {
 
 export async function getProducts(shopId?: string) {
   const supabase = await createClient();
-  let query = supabase.from('product').select('*').is('deleted_at', null);
+  let query = supabase.from('product').select('*, product_tag_assignment(tag_id, product_tag(*))').is('deleted_at', null);
   if (shopId) {
     query = query.eq('shop_id', shopId);
   }
   const { data, error } = await query.order('name', { ascending: true });
   if (error) throw error;
-  return data as Product[];
+  return data as any[];
 }
 
 export async function getCustomers() {
