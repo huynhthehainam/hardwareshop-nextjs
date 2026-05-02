@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { generateOrderPdf } from './OrderPDF';
-import { Order, OrderDetail, Product, Customer, Shop } from '@/types';
+import { Order, OrderDetail, Product, Customer, Shop, Unit } from '@/types';
 import { useSyncExternalStore } from 'react';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { useRouter } from 'next/navigation';
@@ -16,12 +16,14 @@ export default function OrderActions({
   details, 
   customer, 
   products,
+  units = [],
   shop
 }: { 
   order: Order, 
   details: OrderDetail[], 
   customer: Customer, 
   products: Product[],
+  units?: Unit[],
   shop: Shop | null
 }) {
   const { locale, t } = useI18n();
@@ -41,6 +43,7 @@ export default function OrderActions({
         details,
         customer,
         products,
+        units,
         locale,
         shop,
       });

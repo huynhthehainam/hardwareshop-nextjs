@@ -2,7 +2,7 @@
 
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Order, OrderDetail, Product, Customer, Shop } from '@/types';
+import { Order, OrderDetail, Product, Customer, Shop, Unit } from '@/types';
 import { createTranslator } from '@/lib/i18n/translate';
 import type { Locale } from '@/lib/i18n/config';
 
@@ -11,6 +11,7 @@ type OrderPdfParams = {
   details: (OrderDetail & { product?: { name: string } | null })[];
   customer: Customer;
   products: Product[];
+  units?: Unit[];
   locale: Locale;
   shop: Shop | null;
 };
@@ -32,6 +33,12 @@ let fontCachePromise: Promise<{ normal: string; bold: string }> | null = null;
 function formatCurrency(value: number) {
   return value.toLocaleString();
 }
+
+const getUnitLabel = (unit: Unit, t: any) => {
+  const key = `unit_${unit.name}` as any;
+  const translated = t(key);
+  return translated === key ? unit.name : translated;
+};
 
 function arrayBufferToBase64(buffer: ArrayBuffer) {
   let binary = '';
@@ -105,6 +112,7 @@ export async function generateOrderPdf({
   details,
   customer,
   products,
+  units = [],
   locale,
   shop,
 }: OrderPdfParams) {
@@ -206,10 +214,14 @@ export async function generateOrderPdf({
     head: [[t('product'), t('note'), t('qty'), t('price'), t('total')]],
     body: details.map((detail) => {
       const name = detail.product?.name || products.find((item) => item.id === detail.product_id)?.name || t('unknownProduct');
+      const unit = units.find(u => u.id === detail.unit_id);
+      const unitLabel = unit ? getUnitLabel(unit, t) : '';
+      const qtyText = unitLabel ? `${detail.quantity} (${unitLabel})` : String(detail.quantity);
+
       return [
         name,
         detail.note || '-',
-        String(detail.quantity),
+        qtyText,
         formatCurrency(detail.price),
         formatCurrency(detail.quantity * detail.price),
       ];

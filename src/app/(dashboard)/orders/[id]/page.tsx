@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { getProducts, getShop } from '@/lib/db';
+import { getProducts, getShop, getUnits } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -83,6 +83,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   });
 
   const products = await getProducts(order.shop_id);
+  const units = await getUnits();
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -117,6 +118,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           details={details || []} 
           customer={order.customer} 
           products={products} 
+          units={units}
           shop={shop}
         />
       </div>
@@ -223,23 +225,30 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                   </TableCell>
                 </TableRow>
               ) : (
-                details.map((detail) => (
-                  <TableRow key={detail.id} className="hover:bg-[#F8FAFC] border-b border-[#F1F5F9]">
-                    <TableCell className="px-8 py-4">
-                      <div className="font-bold text-[#064E3B]">
-                        {detail.product?.name || t('unknownProduct')}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-4 text-[#64748B] text-xs font-medium italic">
-                      {detail.note || '-'}
-                    </TableCell>
-                    <TableCell className="py-4 text-[#64748B] font-medium">x{detail.quantity}</TableCell>
-                    <TableCell className="py-4 text-[#64748B] font-medium">${detail.price.toLocaleString()}</TableCell>
-                    <TableCell className="text-right px-8 py-4 font-extrabold text-[#064E3B]">
-                      ${(detail.quantity * detail.price).toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                ))
+                details.map((detail) => {
+                  const unit = units.find(u => u.id === detail.unit_id);
+                  const unitLabel = unit ? (t(`unit_${unit.name}` as any) === `unit_${unit.name}` ? unit.name : t(`unit_${unit.name}` as any)) : '';
+                  
+                  return (
+                    <TableRow key={detail.id} className="hover:bg-[#F8FAFC] border-b border-[#F1F5F9]">
+                      <TableCell className="px-8 py-4">
+                        <div className="font-bold text-[#064E3B]">
+                          {detail.product?.name || t('unknownProduct')}
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4 text-[#64748B] text-xs font-medium italic">
+                        {detail.note || '-'}
+                      </TableCell>
+                      <TableCell className="py-4 text-[#64748B] font-medium">
+                        x{detail.quantity} {unitLabel && `(${unitLabel})`}
+                      </TableCell>
+                      <TableCell className="py-4 text-[#64748B] font-medium">${detail.price.toLocaleString()}</TableCell>
+                      <TableCell className="text-right px-8 py-4 font-extrabold text-[#064E3B]">
+                        ${(detail.quantity * detail.price).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

@@ -33,7 +33,7 @@ export default async function DashboardPage() {
   
   try {
     orders = await getOrders(auth.shopId);
-    customers = await getCustomers();
+    customers = await getCustomers(auth.shopId || undefined);
     products = await getProducts(auth.shopId);
     console.log('[Dashboard] Data fetched:', { 
       user: auth.user.email,

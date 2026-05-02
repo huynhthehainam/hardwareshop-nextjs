@@ -278,6 +278,7 @@ export default function OrderForm({
           details,
           customer: currentCustomer!,
           products,
+          units,
           locale,
           shop,
         });
@@ -315,6 +316,7 @@ export default function OrderForm({
               details: detailsWithProduct,
               customer: currentCustomer!,
               products,
+              units,
               locale,
               shop,
             });
