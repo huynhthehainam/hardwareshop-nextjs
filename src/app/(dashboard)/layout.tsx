@@ -1,15 +1,15 @@
 import { requireAuth } from '@/lib/auth';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { LocaleSwitcher } from '@/components/i18n/LocaleSwitcher';
 import { createTranslator } from '@/lib/i18n/translate';
 import { getLocale } from '@/lib/i18n/server';
+import { LogoutButton } from '@/components/LogoutButton';
 import { 
   LayoutDashboard, 
   ShoppingCart, 
   Package, 
   Users, 
-  Store,   Database,  LogOut,
+  Store,   Database,
   ChevronRight
 } from 'lucide-react';
 
@@ -79,12 +79,7 @@ export default async function DashboardLayout({
           </div>
           <div className="flex items-center space-x-6">
             <LocaleSwitcher />
-            <Button variant="outline" asChild className="border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-white transition-all rounded-xl px-5 cursor-pointer">
-              <Link href="/api/auth/logout" className="flex items-center">
-                <LogOut className="w-4 h-4 mr-2" />
-                {t('logout')}
-              </Link>
-            </Button>
+            <LogoutButton label={t('logout')} />
           </div>
         </header>
         <main className="p-10 max-w-[1600px]">
