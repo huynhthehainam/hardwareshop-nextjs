@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Customer } from '@/types';
 import { useI18n } from '@/components/i18n/I18nProvider';
-import { Search, User, Phone, DollarSign, Eye, Users, Plus, Printer, ChevronLeft, ChevronRight, Edit } from 'lucide-react';
+import { Search, User, Phone, DollarSign, Eye, Users, Plus, Printer, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { generateCustomerListPdf } from '@/components/CustomerPDF';
 import { toast } from 'sonner';
@@ -30,8 +30,11 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const filteredCustomers = customers.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -53,7 +56,7 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
       await generateCustomerListPdf({
         customers: filteredCustomers,
         locale,
-        shop: null, // You might want to fetch the current shop details if available
+        shop: null,
       });
     } catch (error) {
       toast.error(t('genericError'));
@@ -78,7 +81,6 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
       if (!res.ok) throw new Error(t('customerCreateFailed'));
       toast.success(t('customerCreated'));
       setOpen(false);
-      // Refresh logic would be ideal here; for now, a simple page reload or revalidation
       window.location.reload();
     } catch (error) {
       toast.error(t('customerCreateFailed'));
@@ -107,6 +109,26 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
       window.location.reload();
     } catch (error) {
       toast.error(t('customerUpdateFailed'));
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+    setIsDeleting(true);
+
+    try {
+      const res = await fetch(`/api/customers/${customerToDelete.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error(t('customerDeleteFailed'));
+      toast.success(t('customerDeleted'));
+      setDeleteDialogOpen(false);
+      setCustomerToDelete(null);
+      window.location.reload();
+    } catch (error) {
+      toast.error(t('customerDeleteFailed'));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -181,6 +203,37 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
               </form>
             </DialogContent>
           </Dialog>
+
+          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <DialogContent className="rounded-3xl border-none shadow-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold text-slate-900">{t('deleteCustomer')}</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                <p className="text-slate-600 text-lg leading-relaxed">
+                  {t('confirmDeleteCustomer')}
+                </p>
+                {customerToDelete && (
+                  <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="font-bold text-slate-900">{customerToDelete.name}</p>
+                    <p className="text-sm text-slate-500">{customerToDelete.phone || t('noPhone')}</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className="rounded-xl border-slate-200 text-slate-600 h-12 px-6">
+                  {t('cancel')}
+                </Button>
+                <Button 
+                  onClick={handleDeleteCustomer}
+                  disabled={isDeleting}
+                  className="rounded-xl bg-red-600 hover:bg-red-700 text-white h-12 px-8 shadow-lg shadow-red-600/20"
+                >
+                  {isDeleting ? t('processing') : t('deleteCustomer')}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
       
@@ -204,7 +257,7 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('phone')}</TableHead>
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('frequentCustomer')}</TableHead>
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs text-right">{t('totalOutstanding')}</TableHead>
-                  <TableHead className="px-10 py-6 w-20"></TableHead>
+                  <TableHead className="px-6 py-6 w-16 text-right font-bold text-[#475569] uppercase tracking-wider text-xs">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -255,20 +308,44 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="px-10 py-6 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button type="button" variant="outline" size="sm" className="rounded-lg border-[#E2E8F0] text-[#475569] hover:bg-[#ECFDF5]" onClick={() => {
-                            setEditingCustomer(customer);
-                            setEditOpen(true);
-                          }}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            {t('editCustomer')}
-                          </Button>
-                          <Button variant="ghost" asChild size="sm" className="text-[#059669] hover:bg-[#ECFDF5] rounded-lg">
+                      <TableCell className="px-6 py-6 text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            asChild 
+                            size="icon" 
+                            className="size-9 text-[#059669] hover:bg-emerald-50 hover:text-[#047857] rounded-xl transition-all duration-200"
+                            title={t('viewDetails')}
+                          >
                             <Link href={`/customers/${customer.id}`}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              {t('viewDetails')}
+                              <Eye className="size-4.5" />
                             </Link>
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            className="size-9 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-all duration-200"
+                            onClick={() => {
+                              setEditingCustomer(customer);
+                              setEditOpen(true);
+                            }}
+                            title={t('editCustomer')}
+                          >
+                            <Edit className="size-4.5" />
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            className="size-9 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-xl transition-all duration-200"
+                            onClick={() => {
+                              setCustomerToDelete(customer);
+                              setDeleteDialogOpen(true);
+                            }}
+                            title={t('deleteCustomer')}
+                          >
+                            <Trash2 className="size-4.5" />
                           </Button>
                         </div>
                       </TableCell>
@@ -298,7 +375,6 @@ export default function CustomerList({ customers }: { customers: Customer[] }) {
                 <div className="flex items-center gap-1">
                   {[...Array(totalPages)].map((_, i) => {
                     const pageNum = i + 1;
-                    // Show only first, last, and pages around current
                     if (
                       pageNum === 1 ||
                       pageNum === totalPages ||
