@@ -170,26 +170,26 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <CardContent className="p-8 space-y-4">
             <div className="flex justify-between items-center py-2 border-b border-white/10">
               <span className="text-emerald-100/70 font-semibold">{t('totalCost')}</span>
-              <span className="text-xl font-black">${order.total_cost.toLocaleString()}</span>
+              <span className="text-xl font-black">{t('currencySymbol')}{order.total_cost.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-white/10">
               <span className="text-emerald-100/70 font-semibold flex items-center">
                 <CreditCard className="w-4 h-4 mr-2" />
                 {t('depositPaid')}
               </span>
-              <span className="text-xl font-black text-emerald-400">-${order.deposit.toLocaleString()}</span>
+              <span className="text-xl font-black text-emerald-400">-{t('currencySymbol')}{order.deposit.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center py-2 mt-2">
               <span className="text-white font-bold uppercase tracking-wider">{t('newDebtImpact')}</span>
               <span className={`text-3xl font-black ${debtImpact > 0 ? 'text-orange-400' : 'text-emerald-400'}`}>
-                ${debtImpact.toLocaleString()}
+                {t('currencySymbol')}{debtImpact.toLocaleString()}
               </span>
             </div>
             {order.customer_id && (
               <div className="flex justify-between items-center py-2 border-t border-white/10">
                 <span className="text-emerald-100/70 font-semibold">{t('customerDebtAfterOrder')}</span>
                 <span className={`text-xl font-black ${customerDebtAfterOrder > 0 ? 'text-red-300' : 'text-emerald-300'}`}>
-                  ${customerDebtAfterOrder.toLocaleString()}
+                  {t('currencySymbol')}{customerDebtAfterOrder.toLocaleString()}
                 </span>
               </div>
             )}
@@ -242,9 +242,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                       <TableCell className="py-4 text-[#64748B] font-medium">
                         x{detail.quantity} {unitLabel && `(${unitLabel})`}
                       </TableCell>
-                      <TableCell className="py-4 text-[#64748B] font-medium">${detail.price.toLocaleString()}</TableCell>
+                      <TableCell className="py-4 text-[#64748B] font-medium">{t('currencySymbol')}{detail.price.toLocaleString()}</TableCell>
                       <TableCell className="text-right px-8 py-4 font-extrabold text-[#064E3B]">
-                        ${(detail.quantity * detail.price).toLocaleString()}
+                        {t('currencySymbol')}{(detail.quantity * detail.price).toLocaleString()}
                       </TableCell>
                     </TableRow>
                   );

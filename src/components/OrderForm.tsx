@@ -383,7 +383,7 @@ export default function OrderForm({
                 <div className="w-10 h-10 bg-[#ECFDF5] rounded-xl flex items-center justify-center">
                   <User className="w-6 h-6 text-[#059669]" />
                 </div>
-                <CardTitle className="text-xl font-bold text-[#064E3B]">{t('customerDetails')}</CardTitle>
+                <CardTitle className="text-xl font-bold text-[#064E3B]">{t('customerInformation')}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
@@ -402,7 +402,7 @@ export default function OrderForm({
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#F1F5F9]">
                       <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('currentDebt')}</p>
-                      <p className="text-xl font-black text-red-600 mt-1">${oldDebt.toLocaleString()}</p>
+                      <p className="text-xl font-black text-red-600 mt-1">{t('currencySymbol')}{oldDebt.toLocaleString()}</p>
                     </div>
                     <div className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#F1F5F9] space-y-3">
                       <div className="flex items-center justify-between gap-4">
@@ -526,12 +526,12 @@ export default function OrderForm({
                             className="rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10"
                             value={item.price} 
                             onValueChange={(val) => updateItem(index, 'price', val ?? 0)}
-                            currencySymbol="$"
+                            currencySymbol={t('currencySymbol')}
                             symbolClassName="text-[#94A3B8]"
                           />
                         </TableCell>
                         <TableCell className="text-right px-8 py-4 font-extrabold text-[#064E3B]">
-                          ${(item.quantity * item.price).toLocaleString()}
+                          {t('currencySymbol')}{(item.quantity * item.price).toLocaleString()}
                         </TableCell>
                         <TableCell className="py-4 text-center">
                           <Button 
@@ -578,7 +578,7 @@ export default function OrderForm({
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-emerald-100/70 font-medium">
                   <span>{t('totalBillable')}</span>
-                  <span className="text-2xl font-black text-white">${totalCost.toLocaleString()}</span>
+                  <span className="text-2xl font-black text-white">{t('currencySymbol')}{totalCost.toLocaleString()}</span>
                 </div>
                 
                 <div className="pt-4 border-t border-white/10">
@@ -603,7 +603,7 @@ export default function OrderForm({
                       className="bg-white/10 border-none text-white text-2xl font-black h-14 pl-10 rounded-2xl focus:ring-2 focus:ring-white/20 placeholder:text-white/20" 
                       value={deposit} 
                       onValueChange={(val) => setDeposit(val ?? 0)} 
-                      currencySymbol="$"
+                      currencySymbol={t('currencySymbol')}
                       symbolClassName="text-white/40 font-black text-xl left-4"
                     />
                   </div>
@@ -613,18 +613,18 @@ export default function OrderForm({
               <div className="p-6 bg-white/10 rounded-2xl space-y-4">
                 <div className="flex justify-between items-center text-sm font-bold text-emerald-100/70">
                   <span>{t('currentBalance')}</span>
-                  <span>${oldDebt.toLocaleString()}</span>
+                  <span>{t('currencySymbol')}{oldDebt.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-bold text-emerald-100/70">{t('newDebtImpact')}</span>
                   <span className="text-lg font-black text-orange-400">
-                    +${(totalCost - deposit).toLocaleString()}
+                    +{t('currencySymbol')}{(totalCost - deposit).toLocaleString()}
                   </span>
                 </div>
                 <div className="pt-4 border-t border-white/10 flex justify-between items-end">
                   <span className="text-sm font-bold uppercase tracking-widest text-emerald-100/50">{t('finalBalance')}</span>
                   <span className={`text-3xl font-black ${newDebt > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                    ${newDebt.toLocaleString()}
+                    {t('currencySymbol')}{newDebt.toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -722,7 +722,7 @@ export default function OrderForm({
                       </TableCell>
                       <TableCell className="font-medium text-[#064E3B]">{getDebtReason(entry)}</TableCell>
                       <TableCell className={`text-right font-bold ${entry.changeAmount >= 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                        {entry.changeAmount >= 0 ? '+' : '-'}${Math.abs(entry.changeAmount).toLocaleString()}
+                        {entry.changeAmount >= 0 ? '+' : '-'}{t('currencySymbol')}{Math.abs(entry.changeAmount).toLocaleString()}
                       </TableCell>
                     </TableRow>
                   ))
@@ -769,10 +769,10 @@ export default function OrderForm({
                         {new Date(entry.createdAt).toLocaleString(locale === 'vi' ? 'vi-VN' : 'en-US')}
                       </TableCell>
                       <TableCell className="text-right font-bold text-[#064E3B]">
-                        ${entry.totalCost.toLocaleString()}
+                        {t('currencySymbol')}{entry.totalCost.toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right font-bold text-[#B45309]">
-                        ${(entry.totalCost - entry.deposit).toLocaleString()}
+                        {t('currencySymbol')}{(entry.totalCost - entry.deposit).toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -891,7 +891,7 @@ export default function OrderForm({
               <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#F1F5F9]">
                 <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('totalCost')}</p>
                 <p className="text-xl font-black text-[#059669] mt-1">
-                  ${(quickAddRows.reduce((acc, r) => acc + (r.size * r.quantity), 0) * (getProductPrice(products.find(p => p.id === quickAddProductId) || { id: '', name: '', default_unit_id: null, default_price: 0, image_url: null, deleted_at: null } as Product))).toLocaleString()}
+                  {t('currencySymbol')}{(quickAddRows.reduce((acc, r) => acc + (r.size * r.quantity), 0) * (getProductPrice(products.find(p => p.id === quickAddProductId) || { id: '', name: '', default_unit_id: null, default_price: 0, image_url: null, deleted_at: null } as Product))).toLocaleString()}
                 </p>
               </div>
             </div>

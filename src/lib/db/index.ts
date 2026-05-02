@@ -19,12 +19,18 @@ export async function getProducts(shopId?: string) {
   return data as any[];
 }
 
-export async function getCustomers(shopId?: string) {
+export async function getCustomers(shopId?: string, limit?: number, offset?: number) {
   const supabase = await createClient();
   let query = supabase.from('customer').select('*').is('deleted_at', null);
   
   if (shopId) {
     query = query.eq('shop_id', shopId);
+  }
+
+  if (limit !== undefined) {
+    const from = offset || 0;
+    const to = from + limit - 1;
+    query = query.range(from, to);
   }
   
   const { data, error } = await query.order('name', { ascending: true });
@@ -82,9 +88,9 @@ export async function getShop(id: string) {
   return data as Shop;
 }
 
-export async function getOrders(shopId?: string, searchTerm?: string) {
+export async function getOrders(shopId?: string, searchTerm?: string, limit?: number) {
   const supabase = await createClient();
-  console.log('[DB] getOrders called:', { shopId, searchTerm });
+  console.log('[DB] getOrders called:', { shopId, searchTerm, limit });
   
   if (searchTerm) {
     // If searching, we use !inner to allow filtering on the joined customer table.
@@ -99,6 +105,7 @@ export async function getOrders(shopId?: string, searchTerm?: string) {
       .is('deleted_at', null)
       .ilike('customer.name', `%${searchTerm}%`);
     if (shopId) q1 = q1.eq('shop_id', shopId);
+    if (limit) q1 = q1.limit(limit);
     const { data: customerMatch, error: error1 } = await q1;
 
     // Query 2: Search by order ID (works for all orders including walk-ins)
@@ -108,6 +115,7 @@ export async function getOrders(shopId?: string, searchTerm?: string) {
       .is('deleted_at', null)
       .ilike('id', `%${searchTerm}%`);
     if (shopId) q2 = q2.eq('shop_id', shopId);
+    if (limit) q2 = q2.limit(limit);
     const { data: idMatch, error: error2 } = await q2;
 
     if (error1 && error2) {
@@ -119,12 +127,15 @@ export async function getOrders(shopId?: string, searchTerm?: string) {
     const combined = [...(customerMatch || []), ...(idMatch || [])];
     const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
     
-    return unique.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const result = unique.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return limit ? result.slice(0, limit) : result;
   }
 
   // No search term: regular fetch
   let query = supabase.from('order').select('*, customer:customer_id(*)').is('deleted_at', null);
   if (shopId) query = query.eq('shop_id', shopId);
+  if (limit) query = query.limit(limit);
+  
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) {
     console.error('[DB] getOrders fetch error:', error);
@@ -132,6 +143,58 @@ export async function getOrders(shopId?: string, searchTerm?: string) {
   }
   console.log('[DB] getOrders result count:', data?.length);
   return data;
+}
+
+export async function getDashboardStats(shopId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('get_dashboard_stats', {
+    p_shop_id: shopId
+  });
+
+  if (error) throw error;
+  return data[0] as {
+    total_revenue: number;
+    active_orders_count: number;
+    total_customers_count: number;
+    total_debt: number;
+  };
+}
+
+export async function adjustCustomerDebt(customerId: string, amount: number, reasonKey: string, reasonParams: any = null) {
+  const supabase = await createClient();
+
+  // 1. Get current debt
+  const { data: customer, error: fetchError } = await supabase
+    .from('customer')
+    .select('debt')
+    .eq('id', customerId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  const newDebt = Number(customer.debt || 0) + amount;
+
+  // 2. Update customer debt
+  const { error: updateError } = await supabase
+    .from('customer')
+    .update({ debt: newDebt })
+    .eq('id', customerId);
+
+  if (updateError) throw updateError;
+
+  // 3. Insert into debt history
+  const { error: historyError } = await supabase
+    .from('customer_debt_history')
+    .insert({
+      customer_id: customerId,
+      change_amount: amount,
+      reason_key: reasonKey,
+      reason_params: reasonParams,
+    });
+
+  if (historyError) throw historyError;
+
+  return { success: true, newDebt };
 }
 
 export async function createOrder(order: Partial<Order>, details: Partial<OrderDetail>[]) {

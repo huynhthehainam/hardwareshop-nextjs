@@ -425,7 +425,7 @@ export default function ProductList() {
                       value={formData.mass_price}
                       onValueChange={(val) => setFormData({ ...formData, mass_price: val })}
                       className="rounded-xl border-[#E2E8F0] h-12"
-                      currencySymbol="$"
+                      currencySymbol={t('currencySymbol')}
                     />
                   </div>
                   <div className="space-y-2">
@@ -474,7 +474,7 @@ export default function ProductList() {
                       onValueChange={(val) => setFormData({ ...formData, default_price: val ?? 0 })}
                       className="rounded-xl border-[#E2E8F0] h-12 focus:ring-[#059669]/10"
                       required
-                      currencySymbol="$"
+                      currencySymbol={t('currencySymbol')}
                     />
                   </div>
                 </div>
@@ -485,7 +485,7 @@ export default function ProductList() {
                     value={formData.price_for_frequent_customer}
                     onValueChange={(val) => setFormData({ ...formData, price_for_frequent_customer: val })}
                     className="rounded-xl border-[#E2E8F0] h-12 focus:ring-[#059669]/10"
-                    currencySymbol="$"
+                    currencySymbol={t('currencySymbol')}
                   />
                   <p className="text-xs text-[#64748B]">{t('frequentCustomerPriceHelp')}</p>
                 </div>

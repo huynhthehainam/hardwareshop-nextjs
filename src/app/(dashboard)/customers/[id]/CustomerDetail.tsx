@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, FormEvent } from 'react';
 import { 
   Customer, 
   CustomerDebtHistory, 
@@ -28,6 +29,11 @@ import {
   TabsTrigger 
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { MoneyInput } from '@/components/ui/money-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   User, 
   Phone, 
@@ -36,9 +42,12 @@ import {
   ArrowLeft,
   Calendar,
   FileText,
-  ChevronRight
+  ChevronRight,
+  Banknote,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function CustomerDetail({ 
   customer, 
@@ -50,6 +59,11 @@ export default function CustomerDetail({
   orders: Order[];
 }) {
   const { locale, t } = useI18n();
+  const [debtDialogOpen, setDebtDialogOpen] = useState(false);
+  const [adjustmentType, setAdjustmentType] = useState<'payment' | 'add'>('payment');
+  const [adjustmentAmount, setAdjustmentAmount] = useState<number | null>(null);
+  const [adjustmentReason, setAdjustmentReason] = useState('');
+  const [isAdjusting, setIsAdjusting] = useState(false);
 
   const getDebtReason = (entry: CustomerDebtHistory) => {
     if (entry.reason_key === 'order_created') {
@@ -64,35 +78,81 @@ export default function CustomerDetail({
       });
     }
 
+    if (entry.reason_key === 'manual_adjustment') {
+      return entry.reason_params?.note || t('debtReasonFallback');
+    }
+
     return t('debtReasonFallback');
+  };
+
+  const handleAdjustDebt = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!adjustmentAmount) return;
+    
+    setIsAdjusting(true);
+    const finalAmount = adjustmentType === 'payment' ? -adjustmentAmount : adjustmentAmount;
+
+    try {
+      const res = await fetch(`/api/customers/${customer.id}/adjust-debt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          amount: finalAmount,
+          reasonKey: 'manual_adjustment',
+          reasonParams: { note: adjustmentReason }
+        }),
+      });
+      
+      if (!res.ok) throw new Error(t('debtAdjustFailed'));
+      
+      toast.success(t('debtAdjustedSuccessfully'));
+      setDebtDialogOpen(false);
+      setAdjustmentAmount(null);
+      setAdjustmentReason('');
+      window.location.reload();
+    } catch (error) {
+      toast.error(t('debtAdjustFailed'));
+    } finally {
+      setIsAdjusting(false);
+    }
   };
 
   const activeOrdersCount = orders.filter(o => !o.deleted_at).length;
 
   return (
     <div className="space-y-8 max-w-[1400px] mx-auto">
-      <div className="flex items-center space-x-4">
-        <Button variant="ghost" size="icon" asChild className="rounded-2xl bg-white shadow-sm hover:bg-[#059669] hover:text-white transition-all cursor-pointer">
-          <Link href="/customers">
-            <ArrowLeft className="w-6 h-6" />
-          </Link>
-        </Button>
-        <div>
-          <h2 className="text-3xl font-black text-[#064E3B] tracking-tight">{customer.name}</h2>
-          <div className="flex flex-wrap items-center gap-3 mt-1">
-            <div className="flex items-center text-[#64748B] font-bold">
-              <Phone className="w-4 h-4 mr-2" />
-              {customer.phone}
-            </div>
-            <div className="w-1 h-1 bg-[#CBD5E1] rounded-full" />
-            <div className="text-xs font-black text-[#059669] uppercase tracking-widest">
-              ID: {customer.id}
-            </div>
-            <div className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-[0.16em] ${customer.is_frequent_customer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
-              {customer.is_frequent_customer ? t('frequentCustomer') : t('regularCustomer')}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center space-x-4">
+          <Button variant="ghost" size="icon" asChild className="rounded-2xl bg-white shadow-sm hover:bg-[#059669] hover:text-white transition-all cursor-pointer">
+            <Link href="/customers">
+              <ArrowLeft className="w-6 h-6" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-3xl font-black text-[#064E3B] tracking-tight">{customer.name}</h2>
+            <div className="flex flex-wrap items-center gap-3 mt-1">
+              <div className="flex items-center text-[#64748B] font-bold">
+                <Phone className="w-4 h-4 mr-2" />
+                {customer.phone}
+              </div>
+              <div className="w-1 h-1 bg-[#CBD5E1] rounded-full" />
+              <div className="text-xs font-black text-[#059669] uppercase tracking-widest">
+                {t('idLabel')}: {customer.id}
+              </div>
+              <div className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-[0.16em] ${customer.is_frequent_customer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                {customer.is_frequent_customer ? t('frequentCustomer') : t('regularCustomer')}
+              </div>
             </div>
           </div>
         </div>
+
+        <Button 
+          onClick={() => setDebtDialogOpen(true)}
+          className="bg-orange-600 hover:bg-orange-700 text-white rounded-2xl px-6 h-12 shadow-lg shadow-orange-600/20 font-black uppercase tracking-widest text-xs"
+        >
+          <Banknote className="w-5 h-5 mr-2" />
+          {t('adjustDebt')}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -113,7 +173,7 @@ export default function CustomerDetail({
               <div className="p-8 bg-[#F8FAFC] rounded-[2rem] border border-[#F1F5F9] text-center">
                 <p className="text-xs font-black text-[#64748B] uppercase tracking-[0.2em] mb-3">{t('currentDebt')}</p>
                 <p className={`text-4xl font-black ${customer.debt > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                  ${customer.debt.toLocaleString()}
+                  {t('currencySymbol')}{customer.debt.toLocaleString()}
                 </p>
               </div>
               
@@ -189,7 +249,7 @@ export default function CustomerDetail({
                               {getDebtReason(entry)}
                             </TableCell>
                             <TableCell className={`px-10 py-6 text-right font-black text-lg ${entry.change_amount >= 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                              {entry.change_amount >= 0 ? '+' : '-'}${Math.abs(entry.change_amount).toLocaleString()}
+                              {entry.change_amount >= 0 ? '+' : '-'}{t('currencySymbol')}{Math.abs(entry.change_amount).toLocaleString()}
                             </TableCell>
                           </TableRow>
                         ))
@@ -246,7 +306,7 @@ export default function CustomerDetail({
                               </div>
                             </TableCell>
                             <TableCell className="px-6 py-6 text-right">
-                              <span className="text-lg font-black text-[#064E3B]">${order.total_cost.toLocaleString()}</span>
+                              <span className="text-lg font-black text-[#064E3B]">{t('currencySymbol')}{order.total_cost.toLocaleString()}</span>
                             </TableCell>
                             <TableCell className="px-10 py-6 text-right">
                               <Button variant="ghost" size="icon" asChild className="rounded-xl hover:bg-[#059669] hover:text-white transition-all cursor-pointer">
@@ -266,6 +326,109 @@ export default function CustomerDetail({
           </Tabs>
         </div>
       </div>
+
+      {/* Debt Adjustment Dialog */}
+      <Dialog open={debtDialogOpen} onOpenChange={setDebtDialogOpen}>
+        <DialogContent className="rounded-3xl border-none shadow-2xl max-w-md">
+          <DialogHeader>
+            <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mb-4">
+              <Banknote className="w-8 h-8 text-[#059669]" />
+            </div>
+            <DialogTitle className="text-2xl font-black text-slate-900">{t('adjustDebt')}</DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleAdjustDebt} className="space-y-6 pt-2">
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-2">
+              <p className="text-xs font-bold text-[#64748B] uppercase tracking-widest mb-1">{t('customer')}</p>
+              <p className="font-bold text-slate-900 text-lg">{customer.name}</p>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60">
+                <span className="text-sm font-medium text-slate-500">{t('currentDebt')}</span>
+                <span className="font-black text-[#064E3B]">{t('currencySymbol')}{customer.debt.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-sm font-bold text-slate-700">{t('adjustmentType')}</Label>
+              <Select 
+                value={adjustmentType} 
+                onValueChange={(v: any) => setAdjustmentType(v)}
+              >
+                <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-semibold text-xs md:text-base">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                  <SelectItem value="payment" className="font-bold text-emerald-600 py-3">{t('payment')}</SelectItem>
+                  <SelectItem value="add" className="font-bold text-red-600 py-3">{t('additionalDebt')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-bold text-slate-700">{t('adjustmentAmount')}</Label>
+                {customer.debt > 0 && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      setAdjustmentType('payment');
+                      setAdjustmentAmount(customer.debt);
+                    }}
+                    className="h-7 px-3 text-[10px] uppercase tracking-wider font-black bg-emerald-50 hover:bg-emerald-100 text-[#059669] rounded-lg transition-colors border-none"
+                  >
+                    {t('payAllDebt')}
+                  </Button>
+                )}
+              </div>
+              <MoneyInput 
+                value={adjustmentAmount} 
+                onValueChange={setAdjustmentAmount}
+                currencySymbol={t('currencySymbol')}
+                placeholder="0"
+                className="h-12 rounded-xl border-slate-200 text-lg"
+                required
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-sm font-bold text-slate-700">{t('adjustmentReason')}</Label>
+              <Textarea 
+                value={adjustmentReason}
+                onChange={(e) => setAdjustmentReason(e.target.value)}
+                placeholder={t('notePlaceholder')}
+                className="rounded-xl border-slate-200 min-h-[100px] resize-none focus:ring-emerald-500/10"
+              />
+            </div>
+
+            <DialogFooter className="gap-3 pt-2">
+              <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={() => setDebtDialogOpen(false)}
+                className="rounded-xl text-slate-500 font-bold h-12"
+              >
+                {t('cancel')}
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isAdjusting || !adjustmentAmount}
+                className={`rounded-xl h-12 px-8 font-black shadow-lg transition-all ${
+                  adjustmentType === 'payment' 
+                    ? 'bg-[#059669] hover:bg-[#047857] shadow-emerald-600/20' 
+                    : 'bg-red-600 hover:bg-red-700 shadow-red-600/20'
+                }`}
+              >
+                {isAdjusting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  t('confirm')
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

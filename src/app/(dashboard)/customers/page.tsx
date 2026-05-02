@@ -4,11 +4,11 @@ import { requireAuth } from '@/lib/auth';
 
 export default async function CustomersPage() {
   const { shopId } = await requireAuth();
-  const customers = await getCustomers(shopId || undefined);
+  const customers = await getCustomers(shopId || undefined, 20, 0);
 
   return (
     <div className="py-2">
-      <CustomerList customers={customers} />
+      <CustomerList initialCustomers={customers} />
     </div>
   );
 }
