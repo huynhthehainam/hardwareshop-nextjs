@@ -70,9 +70,10 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && request.nextUrl.pathname.startsWith('/login')) {
-    // user is logged in, redirect to dashboard
+    // user is logged in, redirect to appropriate landing page
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    const systemRole = user.app_metadata?.system_role || user.user_metadata?.system_role
+    url.pathname = systemRole === 'system_admin' ? '/admin/shops' : '/dashboard'
     return NextResponse.redirect(url)
   }
 
