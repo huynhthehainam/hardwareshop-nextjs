@@ -2,7 +2,7 @@
 
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Order, OrderDetail, Product, Customer, Shop } from '@/types';
+import { Order, OrderDetail, Product, Customer, Shop, Unit } from '@/types';
 import { createTranslator } from '@/lib/i18n/translate';
 import type { Locale } from '@/lib/i18n/config';
 
