@@ -16,12 +16,14 @@ export default function OrderActions({
   details, 
   customer, 
   products,
+  units = [],
   shop
 }: { 
   order: Order, 
   details: OrderDetail[], 
   customer: Customer, 
   products: Product[],
+  units?: Unit[],
   shop: Shop | null
 }) {
   const { locale, t } = useI18n();
@@ -41,6 +43,7 @@ export default function OrderActions({
         details,
         customer,
         products,
+        units,
         locale,
         shop,
       });

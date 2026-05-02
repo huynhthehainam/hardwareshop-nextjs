@@ -96,6 +96,7 @@ export async function getOrders(shopId?: string, searchTerm?: string) {
     let q1 = supabase
       .from('order')
       .select('*, customer:customer_id!inner(*)')
+      .is('deleted_at', null)
       .ilike('customer.name', `%${searchTerm}%`);
     if (shopId) q1 = q1.eq('shop_id', shopId);
     const { data: customerMatch, error: error1 } = await q1;
@@ -104,6 +105,7 @@ export async function getOrders(shopId?: string, searchTerm?: string) {
     let q2 = supabase
       .from('order')
       .select('*, customer:customer_id(*)')
+      .is('deleted_at', null)
       .ilike('id', `%${searchTerm}%`);
     if (shopId) q2 = q2.eq('shop_id', shopId);
     const { data: idMatch, error: error2 } = await q2;
@@ -121,7 +123,7 @@ export async function getOrders(shopId?: string, searchTerm?: string) {
   }
 
   // No search term: regular fetch
-  let query = supabase.from('order').select('*, customer:customer_id(*)');
+  let query = supabase.from('order').select('*, customer:customer_id(*)').is('deleted_at', null);
   if (shopId) query = query.eq('shop_id', shopId);
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) {

@@ -25,6 +25,32 @@ export default function ShopAdminForm({ shop }: { shop: Shop }) {
   const [qrCodeUrl, setQrCodeUrl] = useState(shop.qr_code_url || '');
   const [loading, setLoading] = useState(false);
 
+  const handleAutoSave = async (field: 'logo_url' | 'qr_code_url', value: string) => {
+    // Update local state first for immediate UI feedback
+    if (field === 'logo_url') setLogoUrl(value);
+    if (field === 'qr_code_url') setQrCodeUrl(value);
+
+    try {
+      const response = await fetch('/api/shops', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          [field]: value
+        }),
+      });
+
+      if (response.ok) {
+        toast.success(t('shopInfoUpdated'));
+        router.refresh();
+      } else {
+        const errorData = await response.json();
+        toast.error(`${t('shopInfoUpdateFailed')}: ${errorData.error || t('genericError')}`);
+      }
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -79,14 +105,14 @@ export default function ShopAdminForm({ shop }: { shop: Shop }) {
                 <div className="grid grid-cols-2 gap-4">
                   <ImageUpload
                     value={logoUrl}
-                    onChange={setLogoUrl}
+                    onChange={(val) => handleAutoSave('logo_url', val)}
                     bucket="shop-logos"
                     label={t('shopLogo')}
                     folder="logos"
                   />
                   <ImageUpload
                     value={qrCodeUrl}
-                    onChange={setQrCodeUrl}
+                    onChange={(val) => handleAutoSave('qr_code_url', val)}
                     bucket="payment-qrs"
                     label={t('shopQRCode')}
                     folder="qrs"

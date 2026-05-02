@@ -17,17 +17,10 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { name, phone, address, logo_url, qr_code_url } = body;
 
     const { data, error } = await supabase
       .from('shops')
-      .update({
-        name,
-        phone,
-        address,
-        logo_url,
-        qr_code_url,
-      })
+      .update(body)
       .eq('id', userRole.shop_id)
       .select()
       .single();
