@@ -97,3 +97,33 @@
     @apply bg-white/80 backdrop-blur-md border border-white/20 rounded-xl shadow-md;
   }
 }
+
+@layer utilities {
+  .scrollbar-emerald {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(5, 150, 105, 0.3) transparent;
+  }
+  
+  /* High-end Inset Scrollbar Solution */
+  .scrollbar-emerald::-webkit-scrollbar {
+    width: 12px; /* Increased width to provide space for the inset thumb */
+    height: 12px;
+  }
+  
+  .scrollbar-emerald::-webkit-scrollbar-track {
+    background: transparent; /* Keep track invisible for that floating look */
+  }
+  
+  .scrollbar-emerald::-webkit-scrollbar-thumb {
+    background-color: rgba(5, 150, 105, 0.3);
+    border-radius: 100px;
+    border: 4px solid transparent; /* This creates the "inset" gap from the edge */
+    background-clip: content-box; /* Crucial: ensures the color only fills the content area, not the border */
+    transition: all 0.3s ease;
+  }
+  
+  .scrollbar-emerald:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(5, 150, 105, 0.5);
+    border: 3px solid transparent; /* Thumb grows slightly on hover for better UX */
+  }
+}

@@ -106,7 +106,7 @@ export default function MassPriceUpdateDialog({ open, onOpenChange, tags, onSucc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-[2.5rem] max-w-lg">
+      <DialogContent className="rounded-[2.5rem] max-w-lg max-h-[90vh] overflow-y-auto scrollbar-emerald">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-[#064E3B] flex items-center gap-2">
             <Calculator className="w-6 h-6 text-[#059669]" />

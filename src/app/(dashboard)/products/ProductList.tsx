@@ -286,7 +286,7 @@ export default function ProductList() {
   return (
     <div className="space-y-8 pb-20">
       <Dialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
-        <DialogContent className="rounded-[2rem] max-w-md">
+        <DialogContent className="rounded-[2.5rem] max-w-md max-h-[90vh] overflow-y-auto scrollbar-emerald">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-[#1E293B]">
               {t('addTag')}
@@ -387,7 +387,7 @@ export default function ProductList() {
                 {t('addNewProduct')}
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto scrollbar-emerald">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold text-[#064E3B]">
                   {editingProduct ? t('editProduct') : t('addNewProduct')}
@@ -672,10 +672,10 @@ export default function ProductList() {
                           </div>
                         </TableCell>
                         <TableCell className="px-6 py-6 font-extrabold text-[#064E3B] text-lg">
-                          ${product.default_price.toLocaleString()}
+                          {t('currencySymbol')}{product.default_price.toLocaleString()}
                         </TableCell>
                         <TableCell className="px-6 py-6 font-extrabold text-[#0F172A] text-lg">
-                          {product.price_for_frequent_customer != null ? `\$${product.price_for_frequent_customer.toLocaleString()}` : '-'}
+                          {product.price_for_frequent_customer != null ? `${t('currencySymbol')}${product.price_for_frequent_customer.toLocaleString()}` : '-'}
                         </TableCell>
                         <TableCell className="px-8 py-6 text-right">
                           <div className="flex justify-end space-x-2">

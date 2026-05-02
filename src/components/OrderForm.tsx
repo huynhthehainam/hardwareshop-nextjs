@@ -696,7 +696,7 @@ export default function OrderForm({
             <DialogTitle className="text-xl font-bold text-[#064E3B]">{t('debtHistory')}</DialogTitle>
             <DialogDescription>{t('debtHistorySubtitle')}</DialogDescription>
           </DialogHeader>
-          <div className="max-h-[70vh] overflow-auto p-6">
+          <div className="max-h-[70vh] overflow-auto p-6 scrollbar-emerald">
             <Table>
               <TableHeader className="bg-[#F8FAFC]">
                 <TableRow className="border-b border-[#F1F5F9]">
@@ -739,7 +739,7 @@ export default function OrderForm({
             <DialogTitle className="text-xl font-bold text-[#064E3B]">{t('orderHistory')}</DialogTitle>
             <DialogDescription>{t('orderHistorySubtitle')}</DialogDescription>
           </DialogHeader>
-          <div className="max-h-[70vh] overflow-auto p-6">
+          <div className="max-h-[70vh] overflow-auto p-6 scrollbar-emerald">
             <Table>
               <TableHeader className="bg-[#F8FAFC]">
                 <TableRow className="border-b border-[#F1F5F9]">
