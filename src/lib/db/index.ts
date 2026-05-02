@@ -21,7 +21,7 @@ export async function getProducts(shopId?: string) {
 
 export async function getCustomers(shopId?: string) {
   const supabase = await createClient();
-  let query = supabase.from('customer').select('*');
+  let query = supabase.from('customer').select('*').is('deleted_at', null);
   
   if (shopId) {
     query = query.eq('shop_id', shopId);
