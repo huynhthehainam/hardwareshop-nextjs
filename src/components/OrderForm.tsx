@@ -109,6 +109,21 @@ export default function OrderForm({
     [{ size: 0, quantity: 1 }]
   );
 
+  useEffect(() => {
+    const editData = localStorage.getItem('editOrderData');
+    if (editData) {
+      localStorage.removeItem('editOrderData');
+      try {
+        const parsed = JSON.parse(editData);
+        setCustomerId(parsed.customerId);
+        setItems(parsed.items);
+        setDeposit(parsed.deposit);
+      } catch (e) {
+        console.error('Failed to parse editOrderData', e);
+      }
+    }
+  }, []);
+
   const addItem = () => {
     setItems([...items, { productId: '', quantity: 1, unitId: '', price: 0, note: '' }]);
   };
