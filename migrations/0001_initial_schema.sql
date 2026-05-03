@@ -351,6 +351,56 @@ END $$;
 
 -- 7. SEED DATA
 
+-- System Admin User
+-- Email: huynhthehainam@gmail.com
+-- Password: Admin@123
+INSERT INTO auth.users (
+    id,
+    instance_id,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    aud,
+    role,
+    created_at,
+    updated_at,
+    confirmed_at
+) VALUES (
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000000',
+    'huynhthehainam@gmail.com',
+    extensions.crypt('Admin@123', extensions.gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"],"system_role":"system_admin"}'::jsonb,
+    '{"system_role":"system_admin"}'::jsonb,
+    'authenticated',
+    'authenticated',
+    now(),
+    now(),
+    now()
+) ON CONFLICT (id) DO NOTHING;
+
+-- Identity for the user (important for some Supabase features)
+INSERT INTO auth.identities (
+    id,
+    user_id,
+    identity_data,
+    provider,
+    last_sign_in_at,
+    created_at,
+    updated_at
+) VALUES (
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    format('{"sub":"%s","email":"%s"}','00000000-0000-0000-0000-000000000001','huynhthehainam@gmail.com')::jsonb,
+    'email',
+    now(),
+    now(),
+    now()
+) ON CONFLICT (id) DO NOTHING;
+
 -- Units
 INSERT INTO public.unit (id, name, type, is_main, conversion_rate) VALUES
 ('db28cdf8-eab9-4008-a51f-514672306b83', 'meter', 'length', true, 1),
