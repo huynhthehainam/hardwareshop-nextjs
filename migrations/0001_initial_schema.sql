@@ -1,6 +1,17 @@
 -- Consolidated Migration Script
 -- This script contains the entire schema for the Hardware Shop application.
--- Optimized for performance and portability across Supabase projects.
+-- Optimized for performance, security, and compatibility with Supabase Cloud.
+
+-- 0. META-DATA (Migration tracking)
+CREATE SCHEMA IF NOT EXISTS supabase_migrations;
+CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations (
+    version text PRIMARY KEY,
+    statements text[],
+    name text
+);
+INSERT INTO supabase_migrations.schema_migrations (version, name)
+VALUES ('0001', 'initial_schema')
+ON CONFLICT (version) DO NOTHING;
 
 -- 1. EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -11,7 +22,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Shops
 CREATE TABLE IF NOT EXISTS public.shops (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
     name TEXT NOT NULL,
     phone TEXT,
     address TEXT,
@@ -22,7 +33,7 @@ CREATE TABLE IF NOT EXISTS public.shops (
 
 -- Units
 CREATE TABLE IF NOT EXISTS public.unit (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
     name TEXT NOT NULL,
     type TEXT,
     is_main BOOLEAN DEFAULT TRUE,
@@ -32,7 +43,7 @@ CREATE TABLE IF NOT EXISTS public.unit (
 
 -- Customers
 CREATE TABLE IF NOT EXISTS public.customer (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
     name TEXT NOT NULL,
     phone TEXT,
     debt NUMERIC DEFAULT 0,
@@ -44,7 +55,7 @@ CREATE TABLE IF NOT EXISTS public.customer (
 
 -- Products
 CREATE TABLE IF NOT EXISTS public.product (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
     name TEXT NOT NULL,
     default_unit_id UUID REFERENCES public.unit(id) ON DELETE SET NULL,
     default_price NUMERIC DEFAULT 0,
@@ -68,7 +79,7 @@ CREATE TABLE IF NOT EXISTS public.user_shops (
 
 -- Orders
 CREATE TABLE IF NOT EXISTS public."order" (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
     shop_id UUID NOT NULL REFERENCES public.shops(id) ON DELETE CASCADE,
     customer_id UUID REFERENCES public.customer(id) ON DELETE CASCADE,
     deposit NUMERIC DEFAULT 0,
@@ -82,7 +93,7 @@ CREATE TABLE IF NOT EXISTS public."order" (
 
 -- Order Details
 CREATE TABLE IF NOT EXISTS public.order_detail (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
     order_id UUID REFERENCES public."order"(id) ON DELETE CASCADE,
     product_id UUID REFERENCES public.product(id) ON DELETE CASCADE,
     quantity NUMERIC NOT NULL,
@@ -93,7 +104,7 @@ CREATE TABLE IF NOT EXISTS public.order_detail (
 
 -- Customer Debt History
 CREATE TABLE IF NOT EXISTS public.customer_debt_history (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
     customer_id UUID NOT NULL REFERENCES public.customer(id) ON DELETE CASCADE,
     change_amount NUMERIC NOT NULL,
     reason_key TEXT NOT NULL,
@@ -103,7 +114,7 @@ CREATE TABLE IF NOT EXISTS public.customer_debt_history (
 
 -- Product Tags
 CREATE TABLE IF NOT EXISTS public.product_tag (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
     name TEXT NOT NULL,
     color TEXT DEFAULT '#64748B',
     shop_id UUID NOT NULL REFERENCES public.shops(id) ON DELETE CASCADE,
@@ -161,7 +172,7 @@ CREATE OR REPLACE FUNCTION public.is_system_admin()
  LANGUAGE sql
  STABLE
  SECURITY DEFINER
- SET search_path = public
+ SET search_path = public, auth
 AS $$
   SELECT 
     COALESCE((auth.jwt() -> 'app_metadata' ->> 'system_role') = 'system_admin', false)
@@ -175,7 +186,7 @@ CREATE OR REPLACE FUNCTION public.has_shop_role(p_shop_id uuid, p_allowed_roles 
  LANGUAGE sql
  STABLE
  SECURITY DEFINER
- SET search_path = public
+ SET search_path = public, auth
 AS $$
   SELECT EXISTS (
     SELECT 1
@@ -250,6 +261,7 @@ CREATE OR REPLACE FUNCTION public.get_dashboard_stats(p_shop_id uuid)
  RETURNS TABLE(total_revenue numeric, active_orders_count bigint, total_customers_count bigint, total_debt numeric)
  LANGUAGE plpgsql
  STABLE
+ SET search_path = public
 AS $$
 BEGIN
   RETURN QUERY
@@ -275,55 +287,55 @@ ALTER TABLE public.product_tag ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_tag_assignment ENABLE ROW LEVEL SECURITY;
 
 -- Shops
-CREATE POLICY "System admin full access" ON public.shops FOR ALL TO authenticated USING (is_system_admin()) WITH CHECK (is_system_admin());
-CREATE POLICY "View shops" ON public.shops FOR SELECT TO authenticated USING (is_system_admin() OR has_shop_role(id, ARRAY['admin', 'staff']));
-CREATE POLICY "Manage shops" ON public.shops FOR ALL TO authenticated USING (is_system_admin() OR has_shop_role(id, ARRAY['admin']));
+CREATE POLICY "System admin full access" ON public.shops FOR ALL TO authenticated USING (public.is_system_admin()) WITH CHECK (public.is_system_admin());
+CREATE POLICY "View shops" ON public.shops FOR SELECT TO authenticated USING (public.is_system_admin() OR public.has_shop_role(id, ARRAY['admin', 'staff']));
+CREATE POLICY "Manage shops" ON public.shops FOR ALL TO authenticated USING (public.is_system_admin() OR public.has_shop_role(id, ARRAY['admin']));
 
 -- User Shops
-CREATE POLICY "System admin full access" ON public.user_shops FOR ALL TO authenticated USING (is_system_admin()) WITH CHECK (is_system_admin());
-CREATE POLICY "View user shops" ON public.user_shops FOR SELECT TO authenticated USING (is_system_admin() OR (user_id = auth.uid()));
-CREATE POLICY "Manage user shops" ON public.user_shops FOR ALL TO authenticated USING (is_system_admin());
+CREATE POLICY "System admin full access" ON public.user_shops FOR ALL TO authenticated USING (public.is_system_admin()) WITH CHECK (public.is_system_admin());
+CREATE POLICY "View user shops" ON public.user_shops FOR SELECT TO authenticated USING (public.is_system_admin() OR (user_id = auth.uid()));
+CREATE POLICY "Manage user shops" ON public.user_shops FOR ALL TO authenticated USING (public.is_system_admin());
 
 -- Units
-CREATE POLICY "System admin full access" ON public.unit FOR ALL TO authenticated USING (is_system_admin()) WITH CHECK (is_system_admin());
+CREATE POLICY "System admin full access" ON public.unit FOR ALL TO authenticated USING (public.is_system_admin()) WITH CHECK (public.is_system_admin());
 CREATE POLICY "Users can see units" ON public.unit FOR SELECT TO authenticated USING (true);
 
 -- Products
-CREATE POLICY "System admin full access" ON public.product FOR ALL TO authenticated USING (is_system_admin()) WITH CHECK (is_system_admin());
-CREATE POLICY "Users can see products from their shops" ON public.product FOR SELECT TO authenticated USING (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff']));
-CREATE POLICY "Shop staff can manage products" ON public.product FOR ALL TO authenticated USING (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff'])) WITH CHECK (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff']));
+CREATE POLICY "System admin full access" ON public.product FOR ALL TO authenticated USING (public.is_system_admin()) WITH CHECK (public.is_system_admin());
+CREATE POLICY "Users can see products from their shops" ON public.product FOR SELECT TO authenticated USING (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff']));
+CREATE POLICY "Shop staff can manage products" ON public.product FOR ALL TO authenticated USING (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff'])) WITH CHECK (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff']));
 
 -- Customers
-CREATE POLICY "System admin full access" ON public.customer FOR ALL TO authenticated USING (is_system_admin()) WITH CHECK (is_system_admin());
-CREATE POLICY "Users can view customers of their shops" ON public.customer FOR SELECT TO authenticated USING (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff']));
-CREATE POLICY "Users can insert customers to their shops" ON public.customer FOR INSERT TO authenticated WITH CHECK (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff']));
-CREATE POLICY "Users can update customers of their shops" ON public.customer FOR UPDATE TO authenticated USING (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff'])) WITH CHECK (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff']));
-CREATE POLICY "Users can delete customers of their shops" ON public.customer FOR DELETE TO authenticated USING (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff']));
+CREATE POLICY "System admin full access" ON public.customer FOR ALL TO authenticated USING (public.is_system_admin()) WITH CHECK (public.is_system_admin());
+CREATE POLICY "Users can view customers of their shops" ON public.customer FOR SELECT TO authenticated USING (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff']));
+CREATE POLICY "Users can insert customers to their shops" ON public.customer FOR INSERT TO authenticated WITH CHECK (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff']));
+CREATE POLICY "Users can update customers of their shops" ON public.customer FOR UPDATE TO authenticated USING (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff'])) WITH CHECK (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff']));
+CREATE POLICY "Users can delete customers of their shops" ON public.customer FOR DELETE TO authenticated USING (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff']));
 
 -- Orders
-CREATE POLICY "System admin full access" ON public."order" FOR ALL TO authenticated USING (is_system_admin()) WITH CHECK (is_system_admin());
-CREATE POLICY "View orders" ON public."order" FOR SELECT TO authenticated USING (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff']));
-CREATE POLICY "Manage orders" ON public."order" FOR ALL TO authenticated USING (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff']));
+CREATE POLICY "System admin full access" ON public."order" FOR ALL TO authenticated USING (public.is_system_admin()) WITH CHECK (public.is_system_admin());
+CREATE POLICY "View orders" ON public."order" FOR SELECT TO authenticated USING (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff']));
+CREATE POLICY "Manage orders" ON public."order" FOR ALL TO authenticated USING (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff']));
 
 -- Order Details
-CREATE POLICY "System admin full access" ON public.order_detail FOR ALL TO authenticated USING (is_system_admin()) WITH CHECK (is_system_admin());
-CREATE POLICY "View order details" ON public.order_detail FOR SELECT TO authenticated USING (is_system_admin() OR (EXISTS (SELECT 1 FROM "order" o WHERE o.id = order_detail.order_id AND has_shop_role(o.shop_id, ARRAY['admin', 'staff']))));
-CREATE POLICY "Manage order details" ON public.order_detail FOR ALL TO authenticated USING (is_system_admin() OR (EXISTS (SELECT 1 FROM "order" o WHERE o.id = order_detail.order_id AND has_shop_role(o.shop_id, ARRAY['admin', 'staff']))));
+CREATE POLICY "System admin full access" ON public.order_detail FOR ALL TO authenticated USING (public.is_system_admin()) WITH CHECK (public.is_system_admin());
+CREATE POLICY "View order details" ON public.order_detail FOR SELECT TO authenticated USING (public.is_system_admin() OR (EXISTS (SELECT 1 FROM "order" o WHERE o.id = order_detail.order_id AND public.has_shop_role(o.shop_id, ARRAY['admin', 'staff']))));
+CREATE POLICY "Manage order details" ON public.order_detail FOR ALL TO authenticated USING (public.is_system_admin() OR (EXISTS (SELECT 1 FROM "order" o WHERE o.id = order_detail.order_id AND public.has_shop_role(o.shop_id, ARRAY['admin', 'staff']))));
 
 -- Debt History
-CREATE POLICY "System admin full access" ON public.customer_debt_history FOR ALL TO authenticated USING (is_system_admin()) WITH CHECK (is_system_admin());
-CREATE POLICY "customer_debt_history_select_authenticated" ON public.customer_debt_history FOR SELECT TO authenticated USING (is_system_admin() OR (EXISTS (SELECT 1 FROM customer c WHERE c.id = customer_debt_history.customer_id AND has_shop_role(c.shop_id, ARRAY['admin', 'staff']))));
-CREATE POLICY "customer_debt_history_insert_authenticated" ON public.customer_debt_history FOR INSERT TO authenticated WITH CHECK (is_system_admin() OR (EXISTS (SELECT 1 FROM customer c WHERE c.id = customer_debt_history.customer_id AND has_shop_role(c.shop_id, ARRAY['admin', 'staff']))));
+CREATE POLICY "System admin full access" ON public.customer_debt_history FOR ALL TO authenticated USING (public.is_system_admin()) WITH CHECK (public.is_system_admin());
+CREATE POLICY "customer_debt_history_select_authenticated" ON public.customer_debt_history FOR SELECT TO authenticated USING (public.is_system_admin() OR (EXISTS (SELECT 1 FROM customer c WHERE c.id = customer_debt_history.customer_id AND public.has_shop_role(c.shop_id, ARRAY['admin', 'staff']))));
+CREATE POLICY "customer_debt_history_insert_authenticated" ON public.customer_debt_history FOR INSERT TO authenticated WITH CHECK (public.is_system_admin() OR (EXISTS (SELECT 1 FROM customer c WHERE c.id = customer_debt_history.customer_id AND public.has_shop_role(c.shop_id, ARRAY['admin', 'staff']))));
 
 -- Tags
-CREATE POLICY "System admin full access" ON public.product_tag FOR ALL TO authenticated USING (is_system_admin()) WITH CHECK (is_system_admin());
-CREATE POLICY "Users can view tags of their shops" ON public.product_tag FOR SELECT TO authenticated USING (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff']));
-CREATE POLICY "Users can manage tags of their shops" ON public.product_tag FOR ALL TO authenticated USING (is_system_admin() OR has_shop_role(shop_id, ARRAY['admin', 'staff']));
+CREATE POLICY "System admin full access" ON public.product_tag FOR ALL TO authenticated USING (public.is_system_admin()) WITH CHECK (public.is_system_admin());
+CREATE POLICY "Users can view tags of their shops" ON public.product_tag FOR SELECT TO authenticated USING (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff']));
+CREATE POLICY "Users can manage tags of their shops" ON public.product_tag FOR ALL TO authenticated USING (public.is_system_admin() OR public.has_shop_role(shop_id, ARRAY['admin', 'staff']));
 
 -- Tag Assignments
-CREATE POLICY "System admin full access" ON public.product_tag_assignment FOR ALL TO authenticated USING (is_system_admin()) WITH CHECK (is_system_admin());
-CREATE POLICY "Users can view tag assignments of their shops" ON public.product_tag_assignment FOR SELECT TO authenticated USING (is_system_admin() OR (EXISTS (SELECT 1 FROM product p WHERE p.id = product_tag_assignment.product_id AND has_shop_role(p.shop_id, ARRAY['admin', 'staff']))));
-CREATE POLICY "Users can manage tag assignments of their shops" ON public.product_tag_assignment FOR ALL TO authenticated USING (is_system_admin() OR (EXISTS (SELECT 1 FROM product p WHERE p.id = product_tag_assignment.product_id AND has_shop_role(p.shop_id, ARRAY['admin', 'staff']))));
+CREATE POLICY "System admin full access" ON public.product_tag_assignment FOR ALL TO authenticated USING (public.is_system_admin()) WITH CHECK (public.is_system_admin());
+CREATE POLICY "Users can view tag assignments of their shops" ON public.product_tag_assignment FOR SELECT TO authenticated USING (public.is_system_admin() OR (EXISTS (SELECT 1 FROM product p WHERE p.id = product_tag_assignment.product_id AND public.has_shop_role(p.shop_id, ARRAY['admin', 'staff']))));
+CREATE POLICY "Users can manage tag assignments of their shops" ON public.product_tag_assignment FOR ALL TO authenticated USING (public.is_system_admin() OR (EXISTS (SELECT 1 FROM product p WHERE p.id = product_tag_assignment.product_id AND public.has_shop_role(p.shop_id, ARRAY['admin', 'staff']))));
 
 -- 6. STORAGE
 
@@ -366,7 +378,16 @@ INSERT INTO auth.users (
     role,
     created_at,
     updated_at,
-    confirmed_at
+    confirmation_token,
+    recovery_token,
+    email_change_token_new,
+    email_change,
+    phone,
+    phone_change,
+    phone_change_token,
+    email_change_token_current,
+    reauthentication_token,
+    is_super_admin
 ) VALUES (
     '00000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000000',
@@ -379,15 +400,25 @@ INSERT INTO auth.users (
     'authenticated',
     now(),
     now(),
-    now()
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    false
 ) ON CONFLICT (id) DO NOTHING;
 
--- Identity for the user (important for some Supabase features)
+-- Identity for the user
 INSERT INTO auth.identities (
     id,
     user_id,
     identity_data,
     provider,
+    provider_id,
     last_sign_in_at,
     created_at,
     updated_at
@@ -396,6 +427,7 @@ INSERT INTO auth.identities (
     '00000000-0000-0000-0000-000000000001',
     format('{"sub":"%s","email":"%s"}','00000000-0000-0000-0000-000000000001','huynhthehainam@gmail.com')::jsonb,
     'email',
+    '00000000-0000-0000-0000-000000000001',
     now(),
     now(),
     now()
@@ -421,3 +453,32 @@ ON CONFLICT (id) DO UPDATE SET
     type = EXCLUDED.type,
     is_main = EXCLUDED.is_main,
     conversion_rate = EXCLUDED.conversion_rate;
+
+-- 8. PERMISSIONS & API SYNC
+
+-- Set search path for roles
+ALTER ROLE authenticator SET search_path = public, auth, extensions;
+ALTER ROLE anon SET search_path = public, auth, extensions;
+ALTER ROLE authenticated SET search_path = public, auth, extensions;
+
+-- Grant usage on schemas
+GRANT USAGE ON SCHEMA public TO anon, authenticated, authenticator;
+GRANT USAGE ON SCHEMA auth TO anon, authenticated, authenticator;
+GRANT USAGE ON SCHEMA extensions TO anon, authenticated, authenticator;
+
+-- Grant access to tables
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, authenticator;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, authenticator;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, authenticator;
+
+-- Grant specific access to auth tables (carefully)
+GRANT SELECT ON TABLE auth.users TO anon, authenticated, authenticator;
+GRANT SELECT ON TABLE auth.identities TO anon, authenticated, authenticator;
+
+-- Ensure default privileges for future tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, authenticator;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, authenticator;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, authenticator;
+
+-- Force PostgREST to reload the schema cache
+NOTIFY pgrst, 'reload schema';

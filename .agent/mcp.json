@@ -1,11 +1,13 @@
 {
   "mcpServers": {
     "supabase": {
-      "httpUrl": "https://mcp.supabase.com/mcp?project_ref=dnkxcnwycbspptsxkxmx"
+      "httpUrl": "https://mcp.supabase.com/mcp?project_ref=uzzvobnwdliscrbyenfk"
     },
     "vercel": {
       "command": "npx",
-      "args": ["@vercel/mcp"]
+      "args": [
+        "@vercel/mcp"
+      ]
     }
   }
 }
