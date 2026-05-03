@@ -1,14 +1,13 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { getOrders, getCustomers, getProducts } from '@/lib/db';
+import { getOrders, getDashboardStats } from '@/lib/db';
 import { createTranslator } from '@/lib/i18n/translate';
 import { getLocale } from '@/lib/i18n/server';
-import type { Customer, Order, Product } from '@/types';
+import type { Customer, Order } from '@/types';
 import { 
   DollarSign, 
   ShoppingCart, 
   Users, 
   AlertCircle,
-  ArrowUpRight,
   Clock,
   ExternalLink
 } from 'lucide-react';
@@ -27,31 +26,34 @@ export default async function DashboardPage() {
   }
   
   type OrderWithCustomer = Order & { customer?: Customer | null };
-  let orders: OrderWithCustomer[] = [];
-  let customers: Customer[] = [];
-  let products: Product[] = [];
+  let recentOrders: OrderWithCustomer[] = [];
+  let statsData = {
+    total_revenue: 0,
+    active_orders_count: 0,
+    total_customers_count: 0,
+    total_debt: 0
+  };
   
   try {
-    orders = await getOrders(auth.shopId);
-    customers = await getCustomers(auth.shopId || undefined);
-    products = await getProducts(auth.shopId);
-    console.log('[Dashboard] Data fetched:', { 
+    // 1. Get recent 5 orders for the transaction list
+    recentOrders = await getOrders(auth.shopId, undefined, 5);
+    
+    // 2. Get aggregated stats using RPC
+    statsData = await getDashboardStats(auth.shopId!);
+
+    console.log('[Dashboard] Optimized data fetched:', { 
       user: auth.user.email,
-      systemRole: auth.systemRole,
-      ordersCount: orders.length, 
-      customersCount: customers.length 
+      recentOrders: recentOrders.length,
+      stats: statsData
     });
   } catch (e) {
     console.error('Failed to fetch dashboard data', e);
   }
 
-  const totalRevenue = orders.reduce((acc, order) => acc + (order.total_cost || 0), 0);
-  const totalDebt = customers.reduce((acc, customer) => acc + (customer.debt || 0), 0);
-
   const stats = [
     {
       title: t('statTotalRevenueTitle'),
-      value: `$${totalRevenue.toLocaleString()}`,
+      value: `${t('currencySymbol')}${statsData.total_revenue.toLocaleString()}`,
       icon: DollarSign,
       color: 'text-emerald-600',
       bg: 'bg-emerald-100',
@@ -59,7 +61,7 @@ export default async function DashboardPage() {
     },
     {
       title: t('statActiveOrdersTitle'),
-      value: orders.length,
+      value: statsData.active_orders_count,
       icon: ShoppingCart,
       color: 'text-blue-600',
       bg: 'bg-blue-100',
@@ -67,7 +69,7 @@ export default async function DashboardPage() {
     },
     {
       title: t('statCustomersTitle'),
-      value: customers.length,
+      value: statsData.total_customers_count,
       icon: Users,
       color: 'text-purple-600',
       bg: 'bg-purple-100',
@@ -75,7 +77,7 @@ export default async function DashboardPage() {
     },
     {
       title: t('statTotalDebtTitle'),
-      value: `$${totalDebt.toLocaleString()}`,
+      value: `${t('currencySymbol')}${statsData.total_debt.toLocaleString()}`,
       icon: AlertCircle,
       color: 'text-orange-600',
       bg: 'bg-orange-100',
@@ -106,10 +108,7 @@ export default async function DashboardPage() {
                 <div className={`p-3 ${stat.bg} rounded-2xl`}>
                   <stat.icon className={`w-6 h-6 ${stat.color}`} />
                 </div>
-                <div className="flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-                  <ArrowUpRight className="w-3 h-3 mr-1" />
-                  12%
-                </div>
+              
               </div>
               <div className="mt-4">
                 <p className="text-sm font-semibold text-[#64748B] uppercase tracking-wider">{stat.title}</p>
@@ -140,14 +139,14 @@ export default async function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              {orders.length === 0 ? (
+              {recentOrders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-[#94A3B8]">
                   <ShoppingCart className="w-12 h-12 mb-4 opacity-20" />
                   <p className="font-medium">{t('noTransactionsYet')}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-[#F1F5F9]">
-                  {orders.slice(0, 5).map((order) => (
+                  {recentOrders.map((order) => (
                     <div key={order.id} className="flex items-center justify-between p-6 hover:bg-[#F8FAFC] transition-colors cursor-pointer group">
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 bg-[#F1F5F9] rounded-full flex items-center justify-center font-bold text-[#475569]">
@@ -164,7 +163,7 @@ export default async function DashboardPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-extrabold text-[#064E3B]">${order.total_cost}</p>
+                        <p className="text-lg font-extrabold text-[#064E3B]">{t('currencySymbol')}{order.total_cost.toLocaleString()}</p>
                         <p className="text-xs text-[#94A3B8] font-bold flex items-center justify-end">
                           <Clock className="w-3 h-3 mr-1" />
                           {new Date(order.created_at).toLocaleDateString()}
