@@ -51,6 +51,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
   
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAdjusting, setIsAdjusting] = useState(false);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
 
   const observer = useRef<IntersectionObserver | null>(null);
   
@@ -115,11 +116,25 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
     setSearch(e.target.value);
   };
 
-  const handlePrintAll = async () => {
+  const handlePrint = async (mode: 'all' | 'debt') => {
     setIsGenerating(true);
+    setPrintDialogOpen(false);
     try {
+      const params = new URLSearchParams({
+        limit: '1000', // Fetch all for printing
+        offset: '0',
+        search: search, // Keep current search filter
+        hasDebt: mode === 'debt' ? 'true' : 'false'
+      });
+      
+      const res = await fetch(`/api/customers?${params.toString()}`);
+      if (!res.ok) throw new Error(t('genericError'));
+      
+      const data = await res.json();
+      const customersToPrint = data.customers;
+
       await generateCustomerListPdf({
-        customers: customers,
+        customers: customersToPrint,
         locale,
         shop: null,
       });
@@ -239,10 +254,41 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
           <p className="text-[#64748B] font-medium mt-1">{t('customersManagementSubtitle')}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="rounded-xl border-[#E2E8F0] text-[#475569] h-12 px-6 hover:bg-slate-50 transition-all hover:scale-[1.02]" onClick={handlePrintAll} disabled={isGenerating}>
+          <Button variant="outline" className="rounded-xl border-[#E2E8F0] text-[#475569] h-12 px-6 hover:bg-slate-50 transition-all hover:scale-[1.02]" onClick={() => setPrintDialogOpen(true)} disabled={isGenerating}>
             <Printer className="w-5 h-5 mr-2" />
             {t('printAll')}
           </Button>
+          
+          <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+            <DialogContent className="rounded-3xl border-none shadow-2xl max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black text-slate-900">{t('printAll')}</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <Button 
+                  variant="outline" 
+                  className="h-16 rounded-2xl border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 justify-start px-6 transition-all"
+                  onClick={() => handlePrint('all')}
+                >
+                  <Users className="w-6 h-6 mr-4 text-emerald-600" />
+                  <div className="text-left">
+                    <p className="font-bold">{t('printAllOption')}</p>
+                  </div>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="h-16 rounded-2xl border-slate-200 hover:border-orange-500 hover:bg-orange-50 hover:text-orange-700 justify-start px-6 transition-all"
+                  onClick={() => handlePrint('debt')}
+                >
+                  <DollarSign className="w-6 h-6 mr-4 text-orange-600" />
+                  <div className="text-left">
+                    <p className="font-bold">{t('printOnlyWithDebt')}</p>
+                  </div>
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl px-6 h-12 shadow-lg shadow-[#F97316]/20 transition-all hover:scale-[1.02]">
