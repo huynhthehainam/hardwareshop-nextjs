@@ -51,7 +51,6 @@ export interface Customer {
   phone: string;
   name: string;
   debt: number;
-  is_frequent_customer?: boolean;
 }
 
 export interface CustomerDebtHistory {
@@ -69,6 +68,7 @@ export interface Order {
   customer_id: string;
   deposit: number;
   total_cost: number;
+  is_frequent_customer: boolean;
   debt_after_order?: number | null;
   created_by: string;
   created_at: string;

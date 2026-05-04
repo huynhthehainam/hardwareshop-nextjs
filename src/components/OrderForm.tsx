@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Product, Customer, CustomerDebtHistory, Order, Unit, Shop } from '@/types';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -94,6 +95,7 @@ export default function OrderForm({
   const [customers, setCustomers] = useState(initialCustomers);
   const [customerId, setCustomerId] = useState('');
   const [items, setItems] = useState<OrderItem[]>([]);
+  const [isFrequentCustomer, setIsFrequentCustomer] = useState(false);
   const [deposit, setDeposit] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitMode, setSubmitMode] = useState<'submit_and_print' | 'submit_only' | 'print_only'>('submit_and_print');
@@ -118,6 +120,9 @@ export default function OrderForm({
         setCustomerId(parsed.customerId);
         setItems(parsed.items);
         setDeposit(parsed.deposit);
+        if (parsed.isFrequentCustomer !== undefined) {
+          setIsFrequentCustomer(parsed.isFrequentCustomer);
+        }
       } catch (e) {
         console.error('Failed to parse editOrderData', e);
       }
@@ -192,11 +197,9 @@ export default function OrderForm({
   };
 
   const getProductPrice = (product: Product) => {
-    const currentCustomer = customers.find((entry) => entry.id === customerId);
-    if (currentCustomer?.is_frequent_customer && product.price_for_frequent_customer != null) {
+    if (isFrequentCustomer && product.price_for_frequent_customer != null) {
       return product.price_for_frequent_customer;
     }
-
     return product.default_price || 0;
   };
 
@@ -273,6 +276,7 @@ export default function OrderForm({
           customer_id: customerId,
           deposit,
           total_cost: totalCost,
+          is_frequent_customer: isFrequentCustomer,
           created_by: '',
           created_at: new Date().toISOString(),
         };
@@ -310,7 +314,7 @@ export default function OrderForm({
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId, items, deposit, totalCost }),
+        body: JSON.stringify({ customerId, items, deposit, totalCost, isFrequentCustomer }),
       });
       
       if (response.ok) {
@@ -404,12 +408,27 @@ export default function OrderForm({
             <CardContent className="p-8 space-y-6">
               <div className="space-y-3">
                 <Label className="text-sm font-bold text-[#475569]">{t('searchCustomer')}</Label>
-                <CustomerSearch 
-                  customers={customers} 
-                  selectedId={customerId} 
-                  onSelect={(c) => setCustomerId(c.id)}
-                  onCreate={handleCustomerCreated}
-                />
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <CustomerSearch 
+                      customers={customers} 
+                      selectedId={customerId} 
+                      onSelect={(c) => setCustomerId(c.id)}
+                      onCreate={handleCustomerCreated}
+                    />
+                  </div>
+                  <div className="flex items-center space-x-3 bg-[#F8FAFC] px-4 py-2 rounded-2xl border border-[#F1F5F9] shrink-0">
+                    <Checkbox 
+                      id="is_frequent_customer" 
+                      checked={isFrequentCustomer}
+                      onCheckedChange={(checked) => setIsFrequentCustomer(!!checked)}
+                      className="w-5 h-5 rounded-md border-[#059669] data-[state=checked]:bg-[#059669]"
+                    />
+                    <Label htmlFor="is_frequent_customer" className="text-sm font-bold text-[#064E3B] cursor-pointer whitespace-nowrap">
+                      {t('frequentCustomer')}
+                    </Label>
+                  </div>
+                </div>
               </div>
               
               {currentCustomer && (
@@ -425,9 +444,6 @@ export default function OrderForm({
                           <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('phone')}</p>
                           <p className="text-xl font-bold text-[#064E3B] mt-1">{currentCustomer.phone}</p>
                         </div>
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.18em] ${currentCustomer.is_frequent_customer ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
-                          {currentCustomer.is_frequent_customer ? t('frequentCustomer') : t('regularCustomer')}
-                        </span>
                       </div>
                     </div>
                   </div>
@@ -816,7 +832,14 @@ export default function OrderForm({
           </DialogHeader>
           <div className="p-6 space-y-6">
             <div className="space-y-2">
-              <Label className="text-sm font-bold text-[#475569]">{t('product')}</Label>
+              <div className="flex justify-between items-center">
+                <Label className="text-sm font-bold text-[#475569]">{t('product')}</Label>
+                {quickAddProductId && (
+                  <span className="text-xs font-bold text-[#059669] bg-[#ECFDF5] px-2 py-1 rounded-lg">
+                    {t('price')}: {t('currencySymbol')}{getProductPrice(products.find(p => p.id === quickAddProductId)!).toLocaleString()}
+                  </span>
+                )}
+              </div>
               <ProductSearch 
                 products={products}
                 selectedId={quickAddProductId}

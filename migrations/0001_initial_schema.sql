@@ -47,7 +47,6 @@ CREATE TABLE IF NOT EXISTS public.customer (
     name TEXT NOT NULL,
     phone TEXT,
     debt NUMERIC DEFAULT 0,
-    is_frequent_customer BOOLEAN DEFAULT FALSE,
     shop_id UUID NOT NULL REFERENCES public.shops(id) ON DELETE CASCADE,
     deleted_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now()
@@ -81,10 +80,11 @@ CREATE TABLE IF NOT EXISTS public.user_shops (
 CREATE TABLE IF NOT EXISTS public."order" (
     id UUID PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
     shop_id UUID NOT NULL REFERENCES public.shops(id) ON DELETE CASCADE,
-    customer_id UUID REFERENCES public.customer(id) ON DELETE CASCADE,
+    customer_id UUID NOT NULL REFERENCES public.customer(id) ON DELETE CASCADE,
     deposit NUMERIC DEFAULT 0,
     total_cost NUMERIC DEFAULT 0,
     debt_after_order NUMERIC,
+    is_frequent_customer BOOLEAN NOT NULL DEFAULT FALSE,
     created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     deleted_at TIMESTAMPTZ,
     deleted_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -204,7 +204,8 @@ CREATE OR REPLACE FUNCTION public.create_order(
   p_deposit NUMERIC,
   p_total_cost NUMERIC,
   p_created_by UUID,
-  p_items JSONB
+  p_items JSONB,
+  p_is_frequent_customer BOOLEAN DEFAULT FALSE
 ) RETURNS JSONB AS $$
 DECLARE
   v_order_id UUID;
@@ -221,8 +222,8 @@ BEGIN
     v_debt_after_order := NULL;
   END IF;
 
-  INSERT INTO public."order" (shop_id, customer_id, deposit, total_cost, created_by, debt_after_order)
-  VALUES (p_shop_id, p_customer_id, p_deposit, p_total_cost, p_created_by, v_debt_after_order)
+  INSERT INTO public."order" (shop_id, customer_id, deposit, total_cost, created_by, debt_after_order, is_frequent_customer)
+  VALUES (p_shop_id, p_customer_id, p_deposit, p_total_cost, p_created_by, v_debt_after_order, p_is_frequent_customer)
   RETURNING id INTO v_order_id;
 
   FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(product_id UUID, quantity NUMERIC, price NUMERIC, unit_id UUID, note TEXT)
