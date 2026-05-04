@@ -15,9 +15,19 @@ export async function POST(
     }
 
     const { id } = await ctx.params;
+    
+    // 1. Revert order
     const order = await revertOrder(id, user.id);
+    
+    // 2. Fetch order details to return for "edit"
+    const { data: details, error: detailsError } = await supabase
+        .from('order_detail')
+        .select('*, product:product_id(id, name)')
+        .eq('order_id', id);
 
-    return NextResponse.json(order);
+    if (detailsError) throw detailsError;
+
+    return NextResponse.json({ order, details });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     const status = message === 'ORDER_ALREADY_REVERTED' ? 409 : 500;

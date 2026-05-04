@@ -310,5 +310,6 @@ export async function generateOrderPdf({
     { align: 'right' }
   );
 
-  doc.save(`invoice-${order.id.slice(0, 8)}.pdf`);
+  const sanitizedCustomerName = customer.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  doc.save(`invoice-${sanitizedCustomerName}-${order.id.slice(0, 8)}.pdf`);
 }

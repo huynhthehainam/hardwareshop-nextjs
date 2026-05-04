@@ -86,6 +86,50 @@ export default function OrderActions({
     }
   };
 
+  const handleRevertAndEdit = async () => {
+    const confirmed = window.confirm(`${t('revertOrder')}?`);
+    if (!confirmed) return;
+
+    setIsReverting(true);
+
+    try {
+      const response = await fetch(`/api/orders/${order.id}/revert`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          toast.error(t('orderAlreadyReverted'));
+          router.refresh();
+          return;
+        }
+        throw new Error('Failed to revert order');
+      }
+
+      const { details } = await response.json();
+      
+      // Store order details for pre-filling
+      localStorage.setItem('editOrderData', JSON.stringify({
+        customerId: order.customer_id,
+        items: details.map((d: any) => ({
+          productId: d.product_id,
+          quantity: d.quantity,
+          unitId: d.unit_id,
+          price: d.price,
+          note: d.note
+        })),
+        deposit: order.deposit
+      }));
+
+      toast.success(t('orderReverted'));
+      router.push('/orders/new');
+    } catch {
+      toast.error(t('orderRevertFailed'));
+    } finally {
+      setIsReverting(false);
+    }
+  };
+
   return (
     <div className="flex space-x-2" >
       <Button
@@ -103,6 +147,14 @@ export default function OrderActions({
         className="rounded-xl border border-red-200 bg-red-50 text-red-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-red-300 hover:bg-red-100 hover:text-red-800 hover:shadow-md"
       >
         {isReverting ? t('revertingOrder') : t('revertOrder')}
+      </Button>
+      <Button
+        variant="secondary"
+        disabled={Boolean(order.deleted_at) || isReverting}
+        onClick={handleRevertAndEdit}
+        className="rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-800 hover:shadow-md"
+      >
+        {isReverting ? t('revertingOrder') : t('revertAndEdit')}
       </Button>
     </div>
   );
