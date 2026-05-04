@@ -212,7 +212,8 @@ export async function createOrder(order: Partial<Order>, details: Partial<OrderD
       price: d.price,
       unit_id: d.unit_id,
       note: d.note
-    }))
+    })),
+    p_is_frequent_customer: order.is_frequent_customer ?? false
   });
     
   if (error) throw error;

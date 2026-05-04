@@ -118,7 +118,8 @@ export default function OrderActions({
           price: d.price,
           note: d.note
         })),
-        deposit: order.deposit
+        deposit: order.deposit,
+        isFrequentCustomer: order.is_frequent_customer
       }));
 
       toast.success(t('orderReverted'));

@@ -16,6 +16,7 @@ interface OrderRequestBody {
   items: OrderRequestItem[];
   deposit: number;
   totalCost: number;
+  isFrequentCustomer?: boolean;
 }
 
 export async function GET(request: Request) {
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as OrderRequestBody;
-    const { customerId, items, deposit, totalCost } = body;
+    const { customerId, items, deposit, totalCost, isFrequentCustomer } = body;
 
     // Validate product IDs
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
       deposit,
       total_cost: totalCost,
       created_by: user.id,
+      is_frequent_customer: isFrequentCustomer ?? false,
     };
 
     const details = items.map((item) => ({

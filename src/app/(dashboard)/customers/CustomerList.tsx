@@ -150,13 +150,12 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
     const phone = formData.get('phone') as string;
-    const is_frequent_customer = formData.get('is_frequent_customer') === 'on';
 
     try {
       const res = await fetch('/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, is_frequent_customer }),
+        body: JSON.stringify({ name, phone }),
       });
       if (!res.ok) throw new Error(t('customerCreateFailed'));
       toast.success(t('customerCreated'));
@@ -174,13 +173,12 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
     const phone = formData.get('phone') as string;
-    const is_frequent_customer = formData.get('is_frequent_customer') === 'on';
 
     try {
       const res = await fetch(`/api/customers/${editingCustomer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, is_frequent_customer }),
+        body: JSON.stringify({ name, phone }),
       });
       if (!res.ok) throw new Error(t('customerUpdateFailed'));
       toast.success(t('customerUpdated'));
@@ -309,12 +307,6 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                   <Label htmlFor="phone">{t('phone')}</Label>
                   <Input name="phone" id="phone" placeholder={t('enterPhone')} />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox name="is_frequent_customer" id="is_frequent_customer" />
-                  <Label htmlFor="is_frequent_customer" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    {t('frequentCustomer')}
-                  </Label>
-                </div>
                 <Button type="submit" className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl h-11 shadow-md shadow-[#F97316]/10">{t('createNewCustomer')}</Button>
               </form>
             </DialogContent>
@@ -337,12 +329,6 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                 <div className="space-y-2">
                   <Label htmlFor="edit-phone">{t('phone')}</Label>
                   <Input name="phone" id="edit-phone" defaultValue={editingCustomer?.phone} />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox name="is_frequent_customer" id="edit-is_frequent_customer" defaultChecked={editingCustomer?.is_frequent_customer} />
-                  <Label htmlFor="edit-is_frequent_customer" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    {t('frequentCustomer')}
-                  </Label>
                 </div>
                 <Button type="submit" className="w-full bg-[#059669] hover:bg-[#047857] text-white rounded-xl h-11 shadow-md shadow-[#059669]/10">{t('updateCustomer')}</Button>
               </form>
@@ -519,7 +505,6 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                 <TableRow className="hover:bg-transparent border-b border-[#F1F5F9]">
                   <TableHead className="px-10 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('customerName')}</TableHead>
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('phone')}</TableHead>
-                  <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('frequentCustomer')}</TableHead>
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs text-right">{t('totalOutstanding')}</TableHead>
                   <TableHead className="px-6 py-6 w-16 text-right font-bold text-[#475569] uppercase tracking-wider text-xs">{t('actions')}</TableHead>
                 </TableRow>
@@ -554,14 +539,6 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                           <div className="flex items-center space-x-2 text-[#475569] font-bold">
                             <Phone className="w-4 h-4 text-[#94A3B8]" />
                             <span>{customer.phone || t('noPhone')}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-6">
-                          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                            <Users className={`w-3 h-3 mr-1 ${customer.is_frequent_customer ? 'text-[#059669]' : 'text-[#94A3B8]'}`} />
-                            <span className={customer.is_frequent_customer ? 'text-[#059669]' : 'text-[#64748B]'}>
-                              {customer.is_frequent_customer ? t('frequentCustomer') : t('regularCustomer')}
-                            </span>
                           </div>
                         </TableCell>
                         <TableCell className="px-6 py-6 text-right">

@@ -18,7 +18,6 @@ export type Database = {
         Row: {
           debt: number | null
           id: string
-          is_frequent_customer: boolean
           name: string
           phone: string | null
           shop_id: string
@@ -26,7 +25,6 @@ export type Database = {
         Insert: {
           debt?: number | null
           id?: string
-          is_frequent_customer?: boolean
           name: string
           phone?: string | null
           shop_id: string
@@ -34,7 +32,6 @@ export type Database = {
         Update: {
           debt?: number | null
           id?: string
-          is_frequent_customer?: boolean
           name?: string
           phone?: string | null
           shop_id?: string
@@ -88,36 +85,39 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
-          customer_id: string | null
+          customer_id: string
           debt_after_order: number | null
           deleted_at: string | null
           deleted_by: string | null
           deposit: number | null
           id: string
+          is_frequent_customer: boolean
           shop_id: string | null
           total_cost: number | null
         }
         Insert: {
           created_at?: string | null
           created_by?: string | null
-          customer_id?: string | null
+          customer_id: string
           debt_after_order?: number | null
           deleted_at?: string | null
           deleted_by?: string | null
           deposit?: number | null
           id?: string
+          is_frequent_customer?: boolean
           shop_id?: string | null
           total_cost?: number | null
         }
         Update: {
           created_at?: string | null
           created_by?: string | null
-          customer_id?: string | null
+          customer_id?: string
           debt_after_order?: number | null
           deleted_at?: string | null
           deleted_by?: string | null
           deposit?: number | null
           id?: string
+          is_frequent_customer?: boolean
           shop_id?: string | null
           total_cost?: number | null
         }
@@ -402,6 +402,7 @@ export type Database = {
           p_items: Json
           p_shop_id: string
           p_total_cost: number
+          p_is_frequent_customer?: boolean
         }
         Returns: Json
       }

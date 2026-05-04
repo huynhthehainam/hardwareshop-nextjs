@@ -7,7 +7,7 @@
 ---
 
 **Project:** Hardware Shop
-**Generated:** 2026-04-30 07:24:18
+**Generated:** 2026-05-04 20:03:37
 **Category:** E-commerce
 
 ---
@@ -18,24 +18,24 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#6366F1` | `--color-primary` |
-| Secondary | `#818CF8` | `--color-secondary` |
-| CTA/Accent | `#22C55E` | `--color-cta` |
-| Background | `#EEF2FF` | `--color-background` |
-| Text | `#312E81` | `--color-text` |
+| Primary | `#059669` | `--color-primary` |
+| Secondary | `#10B981` | `--color-secondary` |
+| CTA/Accent | `#F97316` | `--color-cta` |
+| Background | `#ECFDF5` | `--color-background` |
+| Text | `#064E3B` | `--color-text` |
 
-**Color Notes:** Digital indigo + buy green
+**Color Notes:** Success green + urgency orange
 
 ### Typography
 
-- **Heading Font:** Amatic SC
-- **Body Font:** Cabin
-- **Mood:** indie, craft, handmade, artisan, organic, creative
-- **Google Fonts:** [Amatic SC + Cabin](https://fonts.google.com/share?selection.family=Amatic+SC:wght@400;700|Cabin:wght@400;500;600;700)
+- **Heading Font:** Rubik
+- **Body Font:** Nunito Sans
+- **Mood:** ecommerce, clean, shopping, product, retail, conversion
+- **Google Fonts:** [Rubik + Nunito Sans](https://fonts.google.com/share?selection.family=Nunito+Sans:wght@300;400;500;600;700|Rubik:wght@300;400;500;600;700)
 
 **CSS Import:**
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Cabin:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;500;600;700&family=Rubik:wght@300;400;500;600;700&display=swap');
 ```
 
 ### Spacing Variables
@@ -68,7 +68,7 @@
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #22C55E;
+  background: #F97316;
   color: white;
   padding: 12px 24px;
   border-radius: 8px;
@@ -85,8 +85,8 @@
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #6366F1;
-  border: 2px solid #6366F1;
+  color: #059669;
+  border: 2px solid #059669;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -99,7 +99,7 @@
 
 ```css
 .card {
-  background: #EEF2FF;
+  background: #ECFDF5;
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow-md);
@@ -125,9 +125,9 @@
 }
 
 .input:focus {
-  border-color: #6366F1;
+  border-color: #059669;
   outline: none;
-  box-shadow: 0 0 0 3px #6366F120;
+  box-shadow: 0 0 0 3px #05966920;
 }
 ```
 
@@ -163,11 +163,10 @@
 
 ### Page Pattern
 
-**Pattern Name:** Scroll-Triggered Storytelling
+**Pattern Name:** Feature-Rich Showcase
 
-- **Conversion Strategy:** Narrative increases time-on-page 3x. Use progress indicator. Mobile: simplify animations.
-- **CTA Placement:** End of each chapter (mini) + Final climax CTA
-- **Section Order:** 1. Intro hook, 2. Chapter 1 (problem), 3. Chapter 2 (journey), 4. Chapter 3 (solution), 5. Climax CTA
+- **CTA Placement:** Above fold
+- **Section Order:** Hero > Features > CTA
 
 ---
 

@@ -105,6 +105,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <Badge className="bg-[#ECFDF5] text-[#059669] border-none font-mono font-bold px-3 py-1 rounded-lg">
               #{order.id.slice(0, 8).toUpperCase()}
             </Badge>
+            {order.is_frequent_customer && (
+              <Badge className="bg-emerald-600 text-white border-none font-bold px-3 py-1 rounded-lg uppercase tracking-wider text-[10px]">
+                {t('frequentCustomer')}
+              </Badge>
+            )}
             {order.deleted_at ? (
               <Badge className="bg-red-100 text-red-700 border-none font-bold px-3 py-1 rounded-lg">
                 {t('reverted')}
