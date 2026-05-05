@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { Shop, Product, Customer, Order, OrderDetail, Unit, CustomerDebtHistory } from '@/types';
+import { Shop, Customer, Order, OrderDetail, Unit, CustomerDebtHistory, ProductWithTags, OrderWithCustomer } from '@/types';
 
 export async function getShops() {
   const supabase = await createClient();
@@ -16,7 +16,7 @@ export async function getProducts(shopId?: string) {
   }
   const { data, error } = await query.order('name', { ascending: true });
   if (error) throw error;
-  return data as any[];
+  return data as ProductWithTags[];
 }
 
 export async function getCustomers(shopId?: string, limit?: number, offset?: number) {
@@ -128,7 +128,7 @@ export async function getOrders(shopId?: string, searchTerm?: string, limit?: nu
     const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
     
     const result = unique.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    return limit ? result.slice(0, limit) : result;
+    return (limit ? result.slice(0, limit) : result) as OrderWithCustomer[];
   }
 
   // No search term: regular fetch
@@ -142,7 +142,7 @@ export async function getOrders(shopId?: string, searchTerm?: string, limit?: nu
     throw error;
   }
   console.log('[DB] getOrders result count:', data?.length);
-  return data;
+  return data as OrderWithCustomer[];
 }
 
 export async function getDashboardStats(shopId: string) {
@@ -160,7 +160,7 @@ export async function getDashboardStats(shopId: string) {
   };
 }
 
-export async function adjustCustomerDebt(customerId: string, amount: number, reasonKey: string, reasonParams: any = null) {
+export async function adjustCustomerDebt(customerId: string, amount: number, reasonKey: string, reasonParams: Record<string, unknown> | null = null) {
   const supabase = await createClient();
 
   // 1. Get current debt

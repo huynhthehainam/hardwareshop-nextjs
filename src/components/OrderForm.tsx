@@ -32,6 +32,7 @@ import {
   Save,
   FileText
 } from 'lucide-react';
+import { MessageKey } from '@/lib/i18n/messages';
 
 interface OrderItem {
   productId: string;
@@ -191,7 +192,7 @@ export default function OrderForm({
   };
 
   const getUnitLabel = (unit: Unit) => {
-    const key = `unit_${unit.name}` as any;
+    const key = `unit_${unit.name}` as MessageKey;
     const translated = t(key);
     return translated === key ? unit.name : translated;
   };

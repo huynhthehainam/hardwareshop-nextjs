@@ -1,7 +1,6 @@
 import type { Locale } from "./config"
 
-export const messages = {
-  en: {
+export const en = {
     appName: "Hardware Shop",
 
     navDashboard: "Dashboard",
@@ -228,6 +227,8 @@ export const messages = {
     billTo: "Bill To",
     amountDue: "Amount Due",
     thankYouForBusiness: "Thank you for your business!",
+    printSuccess: "PDF generated successfully",
+    errPrint: "Failed to generate PDF",
 
     orderDetailsTitle: "Order Details",
     orderDetailsSubtitle: "Review the complete breakdown of this transaction.",
@@ -401,8 +402,11 @@ export const messages = {
     noShopUsersHint: "Add an admin or staff account to give this shop operational access.",
     lastLogin: "Last Login",
     never: "Never",
-  },
-  vi: {
+} as const
+
+export type MessageKey = keyof typeof en
+
+export const vi = {
     appName: "Cửa hàng vật tư",
 
     navDashboard: "Tổng quan",
@@ -628,6 +632,8 @@ export const messages = {
     billTo: "Người nhận",
     amountDue: "Còn nợ",
     thankYouForBusiness: "Cảm ơn quý khách đã tin tưởng!",
+    printSuccess: "Tạo PDF thành công",
+    errPrint: "Tạo PDF thất bại",
 
     orderDetailsTitle: "Chi tiết đơn hàng",
     orderDetailsSubtitle: "Xem đầy đủ thông tin của giao dịch này.",
@@ -673,7 +679,7 @@ export const messages = {
     results: "kết quả",
     previous: "Trước",
     next: "Tiếp",
-    currencySymbol: "$",
+    currencySymbol: "đ",
     idLabel: "Mã",
     customerName: "Tên khách hàng",
     totalOutstanding: "Tổng nợ",
@@ -802,7 +808,9 @@ export const messages = {
     noShopUsersHint: "Hãy thêm tài khoản quản trị hoặc nhân viên để cửa hàng có thể vận hành.",
     lastLogin: "Đăng nhập gần nhất",
     never: "Chưa từng",
-  },
-} as const satisfies Record<Locale, Record<string, string>>
+} as const satisfies Record<MessageKey, string>
 
-export type MessageKey = keyof (typeof messages)["en"]
+export const messages = { en, vi } as const satisfies Record<
+  Locale,
+  Record<MessageKey, string>
+>

@@ -28,16 +28,17 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Package, Plus, Search, Edit, Trash2, Loader2, Image as ImageIcon, MoreVertical, Filter, ArrowUp, Tag, Settings, X, Calculator } from 'lucide-react';
+import { Package, Plus, Search, Edit, Trash2, Loader2, Image as ImageIcon, MoreVertical, Filter, ArrowUp, Tag, Settings, X, Calculator, Printer } from 'lucide-react';
 import { MoneyInput } from '@/components/ui/money-input';
 import { toast } from 'sonner';
-import { Product, Unit } from '@/types';
+import { Product, Unit, Shop } from '@/types';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { useRef, useCallback } from 'react';
 import ImageUpload from '@/components/ImageUpload';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import MassPriceUpdateDialog from './MassPriceUpdateDialog';
+import { generateProductListPdf } from '@/components/ProductPDF';
 
 interface ProductTag {
   id: string;
@@ -71,6 +72,7 @@ export default function ProductList() {
   const [editingProduct, setEditingProduct] = useState<ProductWithDetails | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [isMassUpdateOpen, setIsMassUpdateOpen] = useState(false);
+  const [printing, setPrinting] = useState(false);
   
   // Debounce search term
   useEffect(() => {
@@ -164,6 +166,32 @@ export default function ProductList() {
       fetchProducts(offset, debouncedSearchTerm);
     }
   }, [offset]);
+
+  const handlePrintAll = async () => {
+    setPrinting(true);
+    try {
+      // Fetch all products (no limit or very high limit)
+      const res = await fetch(`/api/products?limit=10000&search=${encodeURIComponent(debouncedSearchTerm)}`);
+      if (!res.ok) throw new Error('Failed to fetch products for printing');
+      const { data: allProducts } = await res.json();
+
+      // Fetch shop info
+      const shopRes = await fetch('/api/shops/mine');
+      const shop: Shop | null = shopRes.ok ? await shopRes.json() : null;
+
+      await generateProductListPdf({
+        products: allProducts,
+        locale: locale as any,
+        shop
+      });
+      toast.success(t('printSuccess') || 'PDF generated successfully');
+    } catch (error) {
+      console.error(error);
+      toast.error(t('errPrint') || 'Failed to generate PDF');
+    } finally {
+      setPrinting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -363,6 +391,15 @@ export default function ProductList() {
           <p className="text-[#64748B] font-medium mt-1">{t('productsManagementSubtitle')}</p>
         </div>
         <div className="flex gap-4">
+          <Button 
+            onClick={handlePrintAll}
+            disabled={printing}
+            variant="outline" 
+            className="rounded-xl border-[#059669] text-[#059669] h-12 hover:bg-[#ECFDF5]"
+          >
+            {printing ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Printer className="w-5 h-5 mr-2" />}
+            {t('printAll')}
+          </Button>
           <Button 
             onClick={() => setIsMassUpdateOpen(true)}
             variant="outline" 

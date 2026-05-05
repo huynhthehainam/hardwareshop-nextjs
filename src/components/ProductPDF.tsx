@@ -2,12 +2,30 @@
 
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Customer, Shop } from '@/types';
+import { Product, Shop, Unit } from '@/types';
 import { createTranslator } from '@/lib/i18n/translate';
 import type { Locale } from '@/lib/i18n/config';
 
-type CustomerPdfParams = {
-  customers: Customer[];
+import type { MessageKey } from '@/lib/i18n/messages';
+
+interface ProductTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface ProductTagAssignment {
+  tag_id: string;
+  product_tag: ProductTag;
+}
+
+type ProductWithDetails = Product & { 
+  unit?: Unit | null;
+  product_tag_assignment?: ProductTagAssignment[];
+};
+
+type ProductPdfParams = {
+  products: ProductWithDetails[];
   locale: Locale;
   shop: Shop | null;
 };
@@ -89,11 +107,11 @@ async function registerFonts(doc: jsPDF) {
   doc.addFont('BeVietnamPro-Bold.ttf', FONT_FAMILY, 'bold');
 }
 
-export async function generateCustomerListPdf({
-  customers,
+export async function generateProductListPdf({
+  products,
   locale,
   shop,
-}: CustomerPdfParams) {
+}: ProductPdfParams) {
   const t = createTranslator(locale);
   const dateLocale = locale === 'vi' ? 'vi-VN' : 'en-US';
   const doc = new jsPDF({ unit: 'pt', format: 'a4' }) as JsPdfWithAutoTable;
@@ -152,7 +170,7 @@ export async function generateCustomerListPdf({
   doc.setFont(FONT_FAMILY, 'bold');
   doc.setFontSize(20);
   doc.setTextColor('#064E3B');
-  doc.text(t('customersManagementTitle'), margin, cursorY);
+  doc.text(t('productsManagementTitle'), margin, cursorY);
 
   doc.setFont(FONT_FAMILY, 'normal');
   doc.setFontSize(10);
@@ -166,26 +184,26 @@ export async function generateCustomerListPdf({
 
   cursorY += 24;
 
-  // Split customers into two halves for side-by-side columns
-  const half = Math.ceil(customers.length / 2);
-  const leftHalf = customers.slice(0, half);
-  const rightHalf = customers.slice(half);
+  // Split products into two halves for side-by-side columns
+  const half = Math.ceil(products.length / 2);
+  const leftHalf = products.slice(0, half);
+  const rightHalf = products.slice(half);
 
   const rows = [];
   for (let i = 0; i < half; i++) {
-    const c1 = leftHalf[i];
-    const c2 = rightHalf[i];
+    const p1 = leftHalf[i];
+    const p2 = rightHalf[i];
 
     const row = [
-      c1.name,
-      formatCurrency(c1.debt),
+      p1.name,
+      formatCurrency(p1.default_price),
       '' // spacer
     ];
 
-    if (c2) {
+    if (p2) {
       row.push(
-        c2.name,
-        formatCurrency(c2.debt)
+        p2.name,
+        formatCurrency(p2.default_price)
       );
     } else {
       row.push('', '');
@@ -200,7 +218,7 @@ export async function generateCustomerListPdf({
     startY: cursorY,
     margin: { left: margin, right: margin },
     theme: 'plain',
-    head: [[t('customerName'), t('totalOutstanding'), '', t('customerName'), t('totalOutstanding')]],
+    head: [[t('product'), t('basePrice'), '', t('product'), t('basePrice')]],
     body: rows,
     styles: {
       font: FONT_FAMILY,
@@ -234,14 +252,6 @@ export async function generateCustomerListPdf({
     }
   });
 
-  const totalDebt = customers.reduce((sum, c) => sum + c.debt, 0);
-  cursorY = (doc.lastAutoTable?.finalY ?? cursorY) + 20;
-
-  doc.setFont(FONT_FAMILY, 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor('#064E3B');
-  doc.text(`${t('statTotalDebtTitle')}: ${formatCurrency(totalDebt)}`, pageWidth - margin, cursorY, { align: 'right' });
-
   // Footer
   const footerY = pageHeight - 44;
   doc.setDrawColor('#F1F5F9');
@@ -253,5 +263,5 @@ export async function generateCustomerListPdf({
   doc.setTextColor('#94A3B8');
   doc.text(t('appName'), pageWidth / 2, footerY, { align: 'center' });
 
-  doc.save(`customers-${new Date().toISOString().split('T')[0]}.pdf`);
+  doc.save(`products-${new Date().toISOString().split('T')[0]}.pdf`);
 }

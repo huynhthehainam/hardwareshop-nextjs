@@ -4,7 +4,7 @@ import { requireAuth } from '@/lib/auth';
 
 export async function GET() {
   try {
-    const { user } = await requireAuth();
+    await requireAuth();
     const supabase = await createClient();
     
     const { data, error } = await supabase
@@ -14,7 +14,8 @@ export async function GET() {
 
     if (error) throw error;
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

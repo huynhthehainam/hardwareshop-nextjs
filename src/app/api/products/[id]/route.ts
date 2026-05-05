@@ -7,7 +7,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user, role, shopId, systemRole } = await requireAuth();
+    const { role, shopId, systemRole } = await requireAuth();
     const { id } = await params;
     
     if (role !== 'admin' && systemRole !== 'system_admin') {
@@ -63,8 +63,9 @@ export async function PATCH(
 
     if (error) throw error;
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -73,7 +74,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user, role, shopId, systemRole } = await requireAuth();
+    const { role, shopId, systemRole } = await requireAuth();
     const { id } = await params;
 
     if (role !== 'admin' && systemRole !== 'system_admin') {
@@ -95,7 +96,8 @@ export async function DELETE(
 
     if (error) throw error;
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
