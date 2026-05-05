@@ -15,7 +15,7 @@ import { interpolateMessage } from "@/lib/i18n/translate"
 type I18nContextValue = {
   locale: Locale
   setLocale: (nextLocale: Locale) => void
-  t: (key: MessageKey, params?: Record<string, string | number | boolean | null | undefined>) => string
+  t: (key: MessageKey | string, params?: Record<string, string | number | boolean | null | undefined>) => string
 }
 
 const I18nContext = React.createContext<I18nContextValue | null>(null)
@@ -53,8 +53,15 @@ export function I18nProvider({
   )
 
   const t = React.useCallback(
-    (key: MessageKey, params?: Record<string, string | number | boolean | null | undefined>) => {
-      const message = messages[locale]?.[key] ?? messages[defaultLocale][key] ?? key
+    (key: MessageKey | string, params?: Record<string, string | number | boolean | null | undefined>) => {
+      const localeMessages = messages[locale]
+      const fallbackMessages = messages[defaultLocale]
+      const typedKey = key as MessageKey
+
+      const message =
+        (Object.prototype.hasOwnProperty.call(localeMessages, key) ? localeMessages[typedKey] : undefined) ??
+        (Object.prototype.hasOwnProperty.call(fallbackMessages, key) ? fallbackMessages[typedKey] : undefined) ??
+        key
       if (!params) return message
       return interpolateMessage(message, params)
     },

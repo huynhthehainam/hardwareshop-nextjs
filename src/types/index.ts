@@ -45,6 +45,21 @@ export interface Product {
   frequent_customer_sale_off?: number | null;
 }
 
+export interface ProductTag {
+  id: string;
+  shop_id: string;
+  name: string;
+  color?: string | null;
+  created_at: string;
+}
+
+export interface ProductWithTags extends Product {
+  product_tag_assignment: {
+    tag_id: string;
+    product_tag: ProductTag;
+  }[];
+}
+
 export interface Customer {
   id: string;
   shop_id: string;
@@ -74,6 +89,10 @@ export interface Order {
   created_at: string;
   deleted_at?: string | null;
   deleted_by?: string | null;
+}
+
+export interface OrderWithCustomer extends Order {
+  customer: Customer;
 }
 
 export interface OrderDetail {

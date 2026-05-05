@@ -34,8 +34,8 @@ function formatCurrency(value: number) {
   return value.toLocaleString();
 }
 
-const getUnitLabel = (unit: Unit, t: any) => {
-  const key = `unit_${unit.name}` as any;
+const getUnitLabel = (unit: Unit, t: (key: string) => string) => {
+  const key = `unit_${unit.name}`;
   const translated = t(key);
   return translated === key ? unit.name : translated;
 };
@@ -128,40 +128,47 @@ export async function generateOrderPdf({
   let cursorY = margin;
   const hasQRCode = Boolean(shop?.qr_code_url && shop.qr_code_url.trim() !== '');
   const headerImageUrl = hasQRCode ? shop?.qr_code_url : shop?.logo_url;
-  const headerImageSize = hasQRCode ? 62 : 54;
+  
+  // Maximize logo size and use top space
+  const headerImageSize = hasQRCode ? 150 : 140; 
+  const headerImageY = margin - 15; // Move closer to the top edge
   const headerImageX = pageWidth - margin - headerImageSize;
-  const shopTextWidth = headerImageUrl ? contentWidth - headerImageSize - 18 : contentWidth;
+  const shopTextWidth = headerImageUrl ? contentWidth - headerImageSize - 20 : contentWidth;
 
   doc.setFont(FONT_FAMILY, 'bold');
-  doc.setFontSize(20);
+  doc.setFontSize(22);
   doc.setTextColor('#064E3B');
   doc.text(shop?.name || 'Hardware Shop', margin, cursorY);
 
   doc.setFont(FONT_FAMILY, 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(10.5);
   doc.setTextColor('#64748B');
 
-  let shopInfoY = cursorY + 18;
+  let shopInfoY = cursorY + 20;
 
   if (shop?.address) {
     const addressLines = doc.splitTextToSize(shop.address, shopTextWidth);
     doc.text(addressLines, margin, shopInfoY);
-    shopInfoY += addressLines.length * 12;
+    shopInfoY += addressLines.length * 13;
   }
 
   if (shop?.phone) {
     doc.text(`${t('phone')}: ${shop.phone}`, margin, shopInfoY);
-    shopInfoY += 12;
+    shopInfoY += 13;
   }
 
   if (headerImageUrl) {
     try {
       const imageDataUrl = await loadImageAsDataUrl(headerImageUrl);
+      // Detect format from data URL (e.g., data:image/jpeg;base64,...)
+      const formatMatch = imageDataUrl.match(/^data:image\/([a-z]+);base64,/);
+      const format = (formatMatch?.[1]?.toUpperCase() || 'PNG') as any;
+      
       doc.addImage(
         imageDataUrl,
-        'PNG',
+        format,
         headerImageX,
-        cursorY - 4,
+        headerImageY,
         headerImageSize,
         headerImageSize
       );
@@ -172,9 +179,9 @@ export async function generateOrderPdf({
 
   doc.setDrawColor('#059669');
   doc.setLineWidth(1.5);
-  const headerBottomY = Math.max(shopInfoY, cursorY + headerImageSize);
+  const headerBottomY = Math.max(shopInfoY, headerImageY + headerImageSize) + 5;
   doc.line(margin, headerBottomY, pageWidth - margin, headerBottomY);
-  cursorY = headerBottomY + 22;
+  cursorY = headerBottomY + 28;
 
   doc.setFont(FONT_FAMILY, 'bold');
   doc.setFontSize(20);

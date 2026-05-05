@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     const includeDeleted = searchParams.get('includeDeleted') === 'true';
 
     const supabase = await createClient();
-    
+
     let query = supabase
       .from('order')
       .select('*, customer:customer_id(*)', { count: 'exact' })
@@ -49,8 +49,35 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      // Searching by Order ID or Customer Name
-      query = query.or(`id.ilike.%${search}%,customer.name.ilike.%${search}%`);
+      const trimmedSearch = search.trim();
+
+      // Step 1: find matching customers (limit smaller for safety)
+      const { data: matchingCustomers } = await supabase
+        .from('customer')
+        .select('id')
+        .is('deleted_at', null)
+        .or(`name.ilike.%${trimmedSearch}%,phone.ilike.%${trimmedSearch}%`)
+        .limit(100); // reduce from 5000
+
+      const customerIds = (matchingCustomers ?? [])
+        .map((row) => row.id)
+        .filter(Boolean);
+
+      console.log('Matching customer IDs for search:', customerIds);
+      // Step 2: apply OR conditions
+      const filters: string[] = [];
+
+      if (customerIds.length > 0) {
+        const inList = customerIds.map((id) => `"${id}"`).join(',');
+        filters.push(`customer_id.in.(${inList})`);
+      }
+
+      // If nothing matched → force empty result
+      if (filters.length === 0) {
+        return NextResponse.json({ data: [], count: 0 });
+      }
+
+      query = query.or(filters.join(','));
     }
 
     if (startDate) {
@@ -64,10 +91,10 @@ export async function GET(request: Request) {
     }
 
     const { data, error, count } = await query;
-
+    console.log('data', data);  
     if (error) {
       console.error('API Orders GET Error:', error);
-      throw error;
+      return NextResponse.json({ error }, { status: 400 });
     }
     return NextResponse.json({ data, count });
   } catch (error) {
@@ -80,7 +107,7 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -139,13 +166,13 @@ export async function POST(request: Request) {
       .select('*')
       .eq('order_id', orderId);
 
-    return NextResponse.json({ 
-      order: fullOrder, 
-      details: fullDetails 
+    return NextResponse.json({
+      order: fullOrder,
+      details: fullDetails
     });
   } catch (error) {
     console.error('API Order Error:', error);
-    
+
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
   }

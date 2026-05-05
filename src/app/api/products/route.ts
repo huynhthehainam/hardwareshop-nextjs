@@ -33,14 +33,15 @@ export async function GET(request: Request) {
 
     if (error) throw error;
     return NextResponse.json({ data, count });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const { user, role, shopId } = await requireAuth();
+    const { role, shopId } = await requireAuth();
     
     // Only shop admin can manage products for now
     if (role !== 'admin' && !shopId) {
@@ -79,7 +80,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(product);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
