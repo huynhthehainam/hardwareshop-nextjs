@@ -10,7 +10,8 @@ import {
   Package, 
   Users, 
   Store,   Database,
-  ChevronRight
+  ChevronRight,
+  Plus
 } from 'lucide-react';
 
 export default async function DashboardLayout({
@@ -78,6 +79,15 @@ export default async function DashboardLayout({
             </span>
           </div>
           <div className="flex items-center space-x-6">
+            {systemRole !== 'system_admin' && (
+              <Link 
+                href="/orders/new"
+                className="flex items-center px-4 py-2 bg-[#059669] text-white rounded-xl hover:bg-[#047857] transition-all shadow-md shadow-emerald-600/20 font-bold text-sm"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {t('createNewOrder')}
+              </Link>
+            )}
             <LocaleSwitcher />
             <LogoutButton label={t('logout')} />
           </div>
