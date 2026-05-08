@@ -15,7 +15,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogTrigger 
+  DialogTrigger,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Customer } from '@/types';
 import { useI18n } from '@/components/i18n/I18nProvider';
 import { toast } from 'sonner';
-import { UserPlus, Check } from 'lucide-react';
+import { UserPlus, Check, Search, User, Phone, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -39,10 +40,18 @@ export default function CustomerSearch({ customers, selectedId, onSelect, onCrea
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const selectedCustomer = customers.find(c => c.id === selectedId);
+  const selectedCustomer = (customers || []).find(c => c?.id === selectedId);
 
-  const handleCreate = async () => {
+  const handleCreate = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!newName.trim()) {
+      toast.error(t('enterName'));
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const response = await fetch('/api/customers', {
         method: 'POST',
@@ -52,42 +61,99 @@ export default function CustomerSearch({ customers, selectedId, onSelect, onCrea
 
       if (!response.ok) throw new Error(t('customerCreateFailed'));
 
-      const { customer } = await response.json();
+      const data = await response.json();
+      const customer = data.customer || data;
       toast.success(t('customerCreated'));
+      
       if (onCreate) onCreate(customer);
-      onSelect(customer);
+      if (customer) onSelect(customer);
+      
       setCreateOpen(false);
       setOpen(false);
+      setNewName('');
+      setNewPhone('');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('genericError'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-2">
+    <div className="flex gap-2">
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" className="w-full h-12 justify-start rounded-xl font-medium text-[#475569]">
-            {selectedCustomer ? selectedCustomer.name : t('searchOrCreateCustomer')}
+          <Button 
+            variant="outline" 
+            className={cn(
+              "flex-1 h-12 justify-start rounded-xl font-medium transition-all border-[#E2E8F0] hover:bg-slate-50",
+              selectedCustomer ? "text-[#064E3B] font-bold border-[#059669]/30 bg-[#ECFDF5]/30" : "text-[#475569]"
+            )}
+          >
+            {selectedCustomer ? (
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-[#059669] rounded-lg flex items-center justify-center mr-3">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm leading-tight">{selectedCustomer.name}</span>
+                  <span className="text-[10px] font-medium text-[#059669]/70 uppercase tracking-widest">{selectedCustomer.phone || t('noPhone')}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <Search className="w-5 h-5 mr-3 text-[#94A3B8]" />
+                {t('searchOrCreateCustomer')}
+              </div>
+            )}
           </Button>
         </DialogTrigger>
-        <DialogContent className="p-0 border-none shadow-2xl rounded-3xl overflow-hidden max-w-sm">
-          <Command className="rounded-lg shadow-md">
-            <CommandInput placeholder={t('searchCustomersPlaceholder')} />
-            <CommandList>
-              <CommandEmpty>{t('noOrdersFound')}</CommandEmpty>
+        <DialogContent className="p-0 border-none shadow-2xl rounded-3xl overflow-hidden max-w-md">
+          <Command className="rounded-none border-none">
+            <div className="flex items-center border-b border-[#F1F5F9] px-3">
+              <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+              <CommandInput 
+                placeholder={t('searchCustomersPlaceholder')} 
+                className="h-14 border-none focus:ring-0 text-base"
+              />
+            </div>
+            <CommandList className="max-h-[350px]">
+              <CommandEmpty className="py-10 text-center text-sm text-[#94A3B8]">
+                {t('noOrdersFound')}
+              </CommandEmpty>
               <CommandGroup heading={t('customersManagementTitle')}>
-                {customers.map((c) => (
-                  <CommandItem key={c.id} onSelect={() => { onSelect(c); setOpen(false); }}>
-                    <Check className={cn("mr-2 h-4 w-4", selectedId === c.id ? "opacity-100" : "opacity-0")} />
-                    {c.name} ({c.phone})
+                {(customers || []).filter(Boolean).map((c) => (
+                  <CommandItem 
+                    key={c.id} 
+                    onSelect={() => { onSelect(c); setOpen(false); }}
+                    className="flex items-center justify-between py-3 px-4 cursor-pointer hover:bg-[#F8FAFC]"
+                  >
+                    <div className="flex items-center">
+                      <div className={cn(
+                        "w-8 h-8 rounded-lg flex items-center justify-center mr-3",
+                        selectedId === c.id ? "bg-[#059669] text-white" : "bg-[#F1F5F9] text-[#64748B]"
+                      )}>
+                        <User className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[#064E3B]">{c.name}</span>
+                        <span className="text-xs text-[#64748B]">{c.phone || t('noPhone')}</span>
+                      </div>
+                    </div>
+                    {selectedId === c.id && <Check className="h-5 w-5 text-[#059669]" />}
                   </CommandItem>
                 ))}
               </CommandGroup>
               <CommandSeparator />
               <CommandGroup>
-                <CommandItem onSelect={() => setCreateOpen(true)} className="text-[#059669] font-bold">
-                  <UserPlus className="mr-2 h-4 w-4" />
+                <CommandItem 
+                  onSelect={() => {
+                    setOpen(false);
+                    setTimeout(() => setCreateOpen(true), 150);
+                  }} 
+                  className="text-[#059669] font-bold py-4 px-4 cursor-pointer hover:bg-emerald-50"
+                >
+                  <UserPlus className="mr-3 h-5 w-5" />
                   {t('createNewCustomer')}
                 </CommandItem>
               </CommandGroup>
@@ -97,23 +163,82 @@ export default function CustomerSearch({ customers, selectedId, onSelect, onCrea
       </Dialog>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="rounded-3xl p-8">
-          <DialogHeader>
-            <DialogTitle>{t('createNewCustomer')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-2">
-              <Label>{t('customerName')}</Label>
-              <Input value={newName} onChange={e => setNewName(e.target.value)} />
+        <DialogTrigger asChild>
+          <Button 
+            type="button"
+            variant="outline" 
+            size="icon"
+            className="h-12 w-12 rounded-xl border-[#E2E8F0] text-[#059669] hover:bg-emerald-50 hover:border-[#059669]/50 shadow-sm shrink-0"
+            title={t('createNewCustomer')}
+          >
+            <UserPlus className="w-5 h-5" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl max-w-sm">
+          <div className="bg-[#059669] p-8 text-white">
+            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-4">
+              <UserPlus className="w-8 h-8 text-white" />
             </div>
-            <div className="space-y-2">
-              <Label>{t('phone')}</Label>
-              <Input value={newPhone} onChange={e => setNewPhone(e.target.value)} />
-            </div>
-            <Button onClick={handleCreate} className="w-full bg-[#059669] text-white rounded-xl h-12">
-              {t('createNewCustomer')}
-            </Button>
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black text-white">{t('createNewCustomer')}</DialogTitle>
+              <p className="text-emerald-100/70 text-sm font-medium mt-1">{t('customersManagementSubtitle')}</p>
+            </DialogHeader>
           </div>
+          
+          <form onSubmit={handleCreate} className="p-8 space-y-6 bg-white">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="create-name" className="text-sm font-bold text-[#475569]">{t('customerName')}</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                  <Input 
+                    id="create-name"
+                    value={newName} 
+                    onChange={e => setNewName(e.target.value)} 
+                    placeholder={t('enterName')}
+                    className="pl-10 h-12 rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10"
+                    required
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-phone" className="text-sm font-bold text-[#475569]">{t('phone')}</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+                  <Input 
+                    id="create-phone"
+                    value={newPhone} 
+                    onChange={e => setNewPhone(e.target.value)} 
+                    placeholder={t('enterPhone')}
+                    className="pl-10 h-12 rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter className="pt-2">
+              <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={() => setCreateOpen(false)}
+                className="rounded-xl text-[#64748B] font-bold"
+              >
+                {t('cancel')}
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || !newName.trim()}
+                className="flex-1 bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl h-12 font-black shadow-lg shadow-[#F97316]/20 transition-all active:scale-[0.98]"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  t('createNewCustomer')
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

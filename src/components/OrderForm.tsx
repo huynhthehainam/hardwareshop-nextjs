@@ -94,6 +94,11 @@ export default function OrderForm({
   const router = useRouter();
   const { locale, t } = useI18n();
   const [customers, setCustomers] = useState(initialCustomers);
+
+  useEffect(() => {
+    setCustomers(initialCustomers);
+  }, [initialCustomers]);
+
   const [customerId, setCustomerId] = useState('');
   const [items, setItems] = useState<OrderItem[]>([]);
   const [isFrequentCustomer, setIsFrequentCustomer] = useState(false);
@@ -118,11 +123,13 @@ export default function OrderForm({
       localStorage.removeItem('editOrderData');
       try {
         const parsed = JSON.parse(editData);
-        setCustomerId(parsed.customerId);
-        setItems(parsed.items);
-        setDeposit(parsed.deposit);
-        if (parsed.isFrequentCustomer !== undefined) {
-          setIsFrequentCustomer(parsed.isFrequentCustomer);
+        if (parsed) {
+          setCustomerId(parsed.customerId || '');
+          setItems(parsed.items || []);
+          setDeposit(parsed.deposit || 0);
+          if (parsed.isFrequentCustomer !== undefined) {
+            setIsFrequentCustomer(parsed.isFrequentCustomer);
+          }
         }
       } catch (e) {
         console.error('Failed to parse editOrderData', e);
@@ -140,7 +147,7 @@ export default function OrderForm({
       return;
     }
     
-    const product = products.find(p => p.id === quickAddProductId);
+    const product = (products || []).find(p => p?.id === quickAddProductId);
     if (!product) return;
 
     const validRows = quickAddRows.filter(r => r.size > 0 && r.quantity > 0);
@@ -150,7 +157,7 @@ export default function OrderForm({
     }
 
     const totalQuantity = validRows.reduce((acc, r) => acc + (r.size * r.quantity), 0);
-    const unit = units.find(u => u.id === product.default_unit_id);
+    const unit = (units || []).find(u => u?.id === product.default_unit_id);
     const unitLabel = unit ? getUnitLabel(unit) : '';
     const note = validRows.map(r => `${r.quantity}x${r.size}${unitLabel}`).join(';');
 
@@ -198,6 +205,7 @@ export default function OrderForm({
   };
 
   const getProductPrice = (product: Product) => {
+    if (!product) return 0;
     if (isFrequentCustomer && product.price_for_frequent_customer != null) {
       return product.price_for_frequent_customer;
     }
@@ -205,7 +213,7 @@ export default function OrderForm({
   };
 
   const handleProductChange = (index: number, productId: string) => {
-    const product = products.find((candidate) => candidate.id === productId);
+    const product = (products || []).find((candidate) => candidate?.id === productId);
     const newItems = [...items];
     newItems[index] = {
       ...newItems[index],
@@ -216,8 +224,8 @@ export default function OrderForm({
     setItems(newItems);
   };
 
-  const totalCost = items.reduce((acc, item) => acc + (item.quantity * item.price), 0);
-  const currentCustomer = customers.find(c => c.id === customerId);
+  const totalCost = items.reduce((acc, item) => acc + (item.quantity * (item.price || 0)), 0);
+  const currentCustomer = (customers || []).find(c => c?.id === customerId);
   const oldDebt = currentCustomer?.debt || 0;
   const newDebt = oldDebt + totalCost - deposit;
 
@@ -231,7 +239,7 @@ export default function OrderForm({
         const response = await fetch(`/api/customers/${customerId}/debt-history`);
         if (!response.ok) throw new Error('Failed to load debt history');
         const payload = (await response.json()) as { history: DebtHistoryResponse[] };
-        setDebtHistory(payload.history.map(mapDebtHistoryEntry));
+        setDebtHistory((payload.history || []).filter(Boolean).map(mapDebtHistoryEntry));
       } catch {
         toast.error(t('genericError'));
       } finally {
@@ -252,7 +260,7 @@ export default function OrderForm({
         const response = await fetch(`/api/customers/${customerId}/orders`);
         if (!response.ok) throw new Error('Failed to load order history');
         const payload = (await response.json()) as { history: OrderHistoryResponse[] };
-        setOrderHistory(payload.history.map(mapOrderHistoryEntry));
+        setOrderHistory((payload.history || []).filter(Boolean).map(mapOrderHistoryEntry));
       } catch {
         toast.error(t('genericError'));
       } finally {
@@ -290,7 +298,7 @@ export default function OrderForm({
           unit_id: item.unitId,
           price: item.price,
           note: item.note,
-          product: { name: products.find(p => p.id === item.productId)?.name || '' }
+          product: { name: (products || []).find(p => p?.id === item.productId)?.name || '' }
         }));
 
         await generateOrderPdf({
@@ -326,9 +334,9 @@ export default function OrderForm({
         if (submitMode === 'submit_and_print') {
           try {
             // Add product name to details for PDF
-            const detailsWithProduct = details.map((d: any) => ({
+            const detailsWithProduct = (details || []).map((d: any) => ({
               ...d,
-              product: { name: products.find(p => p.id === d.product_id)?.name || '' }
+              product: { name: (products || []).find(p => p?.id === d.product_id)?.name || '' }
             }));
 
             await generateOrderPdf({
@@ -380,14 +388,15 @@ export default function OrderForm({
   };
 
   const handleCustomerCreated = (customer: Customer) => {
+    if (!customer) return;
     setCustomers((currentCustomers) => {
-      const exists = currentCustomers.some((entry) => entry.id === customer.id);
+      const exists = (currentCustomers || []).some((entry) => entry?.id === customer.id);
 
       if (exists) {
         return currentCustomers;
       }
 
-      return [...currentCustomers, customer].sort((a, b) => a.name.localeCompare(b.name));
+      return [...(currentCustomers || []), customer].sort((a, b) => (a?.name || '').localeCompare(b?.name || ''));
     });
     setCustomerId(customer.id);
   };
@@ -545,7 +554,7 @@ export default function OrderForm({
                               <SelectValue placeholder={t('unitPlaceholder')} />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl">
-                              {units.map((unit) => (
+                              {(units || []).filter(Boolean).map((unit) => (
                                 <SelectItem key={unit.id} value={unit.id} className="cursor-pointer">
                                   {getUnitLabel(unit)}
                                 </SelectItem>
@@ -837,7 +846,7 @@ export default function OrderForm({
                 <Label className="text-sm font-bold text-[#475569]">{t('product')}</Label>
                 {quickAddProductId && (
                   <span className="text-xs font-bold text-[#059669] bg-[#ECFDF5] px-2 py-1 rounded-lg">
-                    {t('price')}: {t('currencySymbol')}{getProductPrice(products.find(p => p.id === quickAddProductId)!).toLocaleString()}
+                    {t('price')}: {t('currencySymbol')}{(products.find(p => p?.id === quickAddProductId) ? getProductPrice(products.find(p => p?.id === quickAddProductId)!) : 0).toLocaleString()}
                   </span>
                 )}
               </div>
@@ -895,8 +904,8 @@ export default function OrderForm({
                         <TableCell className="py-2">
                           <span className="text-sm text-[#64748B]">
                             {(() => {
-                              const product = products.find(p => p.id === quickAddProductId);
-                              const unit = units.find(u => u.id === product?.default_unit_id);
+                              const product = (products || []).find(p => p?.id === quickAddProductId);
+                              const unit = (units || []).find(u => u?.id === product?.default_unit_id);
                               return unit ? getUnitLabel(unit) : '';
                             })()}
                           </span>
@@ -930,7 +939,7 @@ export default function OrderForm({
               <div className="p-4 bg-[#F8FAFC] rounded-xl border border-[#F1F5F9]">
                 <p className="text-xs font-semibold text-[#64748B] uppercase tracking-wider">{t('totalCost')}</p>
                 <p className="text-xl font-black text-[#059669] mt-1">
-                  {t('currencySymbol')}{(quickAddRows.reduce((acc, r) => acc + (r.size * r.quantity), 0) * (getProductPrice(products.find(p => p.id === quickAddProductId) || { id: '', name: '', default_unit_id: null, default_price: 0, image_url: null, deleted_at: null } as Product))).toLocaleString()}
+                  {t('currencySymbol')}{(quickAddRows.reduce((acc, r) => acc + (r.size * r.quantity), 0) * (getProductPrice((products || []).find(p => p?.id === quickAddProductId) || { id: '', name: '', default_unit_id: null, default_price: 0, image_url: null, deleted_at: null } as Product))).toLocaleString()}
                 </p>
               </div>
             </div>
