@@ -32,7 +32,7 @@ export default function ProductSearch({ products, selectedId, onSelect, placehol
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
-  const selectedProduct = products.find(p => p.id === selectedId);
+  const selectedProduct = (products || []).find(p => p?.id === selectedId);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -63,7 +63,7 @@ export default function ProductSearch({ products, selectedId, onSelect, placehol
               </div>
             </CommandEmpty>
             <CommandGroup className="p-1">
-              {products.map((product) => (
+              {(products || []).filter(Boolean).map((product) => (
                 <CommandItem
                   key={product.id}
                   value={product.name}
