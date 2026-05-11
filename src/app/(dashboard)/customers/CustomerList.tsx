@@ -544,7 +544,6 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                         <TableCell className="px-6 py-6 text-right">
                           <div className="inline-flex flex-col items-end">
                             <div className={`px-4 py-2 rounded-xl flex items-center space-x-2 ${customer.debt > 0 ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                              <DollarSign className="w-4 h-4" />
                               <span className="text-xl font-black">{t('currencySymbol')}{customer.debt.toLocaleString()}</span>
                             </div>
                           </div>

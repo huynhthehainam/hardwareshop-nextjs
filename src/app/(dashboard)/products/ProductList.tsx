@@ -424,7 +424,7 @@ export default function ProductList() {
                 {t('addNewProduct')}
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto scrollbar-emerald">
+            <DialogContent className="sm:max-w-[1000px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto scrollbar-emerald">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold text-[#064E3B]">
                   {editingProduct ? t('editProduct') : t('addNewProduct')}
@@ -649,13 +649,14 @@ export default function ProductList() {
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('defaultUnit')}</TableHead>
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('basePrice')}</TableHead>
                   <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('frequentCustomerPrice')}</TableHead>
+                  <TableHead className="px-6 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs">{t('saleOff')} (%)</TableHead>
                   <TableHead className="px-8 py-6 font-bold text-[#475569] uppercase tracking-wider text-xs text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {products.length === 0 && !loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-80 text-center">
+                    <TableCell colSpan={6} className="h-80 text-center">
                       <div className="flex flex-col items-center justify-center space-y-4">
                         <div className="w-20 h-20 bg-[#F1F5F9] rounded-3xl flex items-center justify-center">
                           <Package className="w-10 h-10 text-[#94A3B8]" />
@@ -714,6 +715,9 @@ export default function ProductList() {
                         <TableCell className="px-6 py-6 font-extrabold text-[#0F172A] text-lg">
                           {product.price_for_frequent_customer != null ? `${t('currencySymbol')}${product.price_for_frequent_customer.toLocaleString()}` : '-'}
                         </TableCell>
+                        <TableCell className="px-6 py-6 font-extrabold text-[#0F172A] text-lg">
+                          {product.frequent_customer_sale_off ?? 0}%
+                        </TableCell>
                         <TableCell className="px-8 py-6 text-right">
                           <div className="flex justify-end space-x-2">
                             <Button
@@ -738,7 +742,7 @@ export default function ProductList() {
                     ))}
                     {loading && (
                       <TableRow>
-                        <TableCell colSpan={5} className="py-8 text-center">
+                        <TableCell colSpan={6} className="py-8 text-center">
                           <Loader2 className="w-8 h-8 text-[#059669] animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
