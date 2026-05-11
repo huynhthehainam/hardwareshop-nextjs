@@ -249,6 +249,13 @@ export async function generateProductListPdf({
         data.cell.styles.lineWidth = 0;
         data.cell.styles.fillColor = [255, 255, 255];
       }
+
+      // Ensure header alignment matches column alignment
+      if (data.section === 'head') {
+        if (data.column.index === 1 || data.column.index === 4) {
+          data.cell.styles.halign = 'right';
+        }
+      }
     }
   });
 
