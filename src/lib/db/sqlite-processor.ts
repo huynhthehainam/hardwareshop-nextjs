@@ -1,11 +1,9 @@
-import sqlite3 from 'sqlite3';
+import Database from 'better-sqlite3';
 
 export async function processSqliteFile(filePath: string): Promise<Record<string, any[]>> {
-  return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(filePath, sqlite3.OPEN_READONLY, (err) => {
-      if (err) return reject(err);
-    });
-
+  const db = new Database(filePath, { readonly: true });
+  
+  try {
     const data: Record<string, any[]> = {};
     const tables = [
       { key: 'customers', query: "SELECT id, name, information as phone, dept as debt FROM Customers" },
@@ -15,22 +13,12 @@ export async function processSqliteFile(filePath: string): Promise<Record<string
       { key: 'dept_histories', query: "SELECT id, created, cash, reason, customer_id as customerId FROM DeptHistories" }
     ];
 
-    let processedCount = 0;
-    tables.forEach(({ key, query }) => {
-      db.all(query, [], (err, rows) => {
-        if (err) {
-          db.close();
-          return reject(err);
-        }
-        data[key] = rows;
-        processedCount++;
-        if (processedCount === tables.length) {
-          db.close((closeErr) => {
-            if (closeErr) return reject(closeErr);
-            resolve(data);
-          });
-        }
-      });
-    });
-  });
+    for (const { key, query } of tables) {
+      data[key] = db.prepare(query).all();
+    }
+
+    return data;
+  } finally {
+    db.close();
+  }
 }
