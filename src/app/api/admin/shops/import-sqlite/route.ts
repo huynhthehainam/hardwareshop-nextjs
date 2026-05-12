@@ -5,7 +5,9 @@ import { writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { seedShopFromSQLite } from '@/lib/db/sqlite-import';
-import { processSqliteFile } from '@/lib/db/sqlite-processor';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+const execAsync = promisify(exec);
 
 export async function POST(request: Request) {
   try {
@@ -42,7 +44,8 @@ export async function POST(request: Request) {
 
     let data;
     try {
-      const processedData = await processSqliteFile(tempPath);
+      const { stdout } = await execAsync(`python extract_sqlite.py "${tempPath}"`);
+      const processedData = JSON.parse(stdout);
       data = {
         customers: processedData.customers || [],
         products: processedData.products || [],
