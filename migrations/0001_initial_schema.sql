@@ -99,7 +99,11 @@ CREATE TABLE IF NOT EXISTS public.order_detail (
     quantity NUMERIC NOT NULL,
     unit_id UUID REFERENCES public.unit(id) ON DELETE SET NULL,
     price NUMERIC NOT NULL,
-    note TEXT
+    total_cost NUMERIC NOT NULL DEFAULT 0,
+    note TEXT,
+    free_product_name TEXT,
+    free_unit_name TEXT,
+    is_free_detail BOOLEAN DEFAULT FALSE
 );
 
 -- Customer Debt History
@@ -226,10 +230,10 @@ BEGIN
   VALUES (p_shop_id, p_customer_id, p_deposit, p_total_cost, p_created_by, v_debt_after_order, p_is_frequent_customer)
   RETURNING id INTO v_order_id;
 
-  FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(product_id UUID, quantity NUMERIC, price NUMERIC, unit_id UUID, note TEXT)
+  FOR v_item IN SELECT * FROM jsonb_to_recordset(p_items) AS x(product_id UUID, quantity NUMERIC, price NUMERIC, total_cost NUMERIC, unit_id UUID, note TEXT, is_free_detail BOOLEAN)
   LOOP
-    INSERT INTO public.order_detail (order_id, product_id, quantity, price, unit_id, note)
-    VALUES (v_order_id, v_item.product_id, v_item.quantity, v_item.price, v_item.unit_id, v_item.note);
+    INSERT INTO public.order_detail (order_id, product_id, quantity, price, total_cost, unit_id, note, is_free_detail)
+    VALUES (v_order_id, v_item.product_id, v_item.quantity, v_item.price, COALESCE(v_item.total_cost, 0), v_item.unit_id, v_item.note, COALESCE(v_item.is_free_detail, FALSE));
   END LOOP;
 
   IF p_customer_id IS NOT NULL AND v_debt_delta <> 0 THEN
@@ -482,4 +486,6 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authen
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, authenticator;
 
 -- Force PostgREST to reload the schema cache
+NOTIFY pgrst, 'reload schema';
+he schema cache
 NOTIFY pgrst, 'reload schema';

@@ -16,21 +16,27 @@ export type Database = {
     Tables: {
       customer: {
         Row: {
+          created_at: string | null
           debt: number | null
+          deleted_at: string | null
           id: string
           name: string
           phone: string | null
           shop_id: string
         }
         Insert: {
+          created_at?: string | null
           debt?: number | null
+          deleted_at?: string | null
           id?: string
           name: string
           phone?: string | null
           shop_id: string
         }
         Update: {
+          created_at?: string | null
           debt?: number | null
+          deleted_at?: string | null
           id?: string
           name?: string
           phone?: string | null
@@ -140,30 +146,42 @@ export type Database = {
       }
       order_detail: {
         Row: {
+          free_product_name: string | null
+          free_unit_name: string | null
           id: string
+          is_free_detail: boolean | null
           note: string | null
           order_id: string | null
           price: number
           product_id: string | null
           quantity: number
+          total_cost: number
           unit_id: string | null
         }
         Insert: {
+          free_product_name?: string | null
+          free_unit_name?: string | null
           id?: string
+          is_free_detail?: boolean | null
           note?: string | null
           order_id?: string | null
           price: number
           product_id?: string | null
           quantity: number
+          total_cost?: number
           unit_id?: string | null
         }
         Update: {
+          free_product_name?: string | null
+          free_unit_name?: string | null
           id?: string
+          is_free_detail?: boolean | null
           note?: string | null
           order_id?: string | null
           price?: number
           product_id?: string | null
           quantity?: number
+          total_cost?: number
           unit_id?: string | null
         }
         Relationships: [
@@ -192,6 +210,7 @@ export type Database = {
       }
       product: {
         Row: {
+          created_at: string | null
           default_price: number
           default_unit_id: string | null
           deleted_at: string | null
@@ -205,6 +224,7 @@ export type Database = {
           shop_id: string
         }
         Insert: {
+          created_at?: string | null
           default_price?: number
           default_unit_id?: string | null
           deleted_at?: string | null
@@ -218,6 +238,7 @@ export type Database = {
           shop_id: string
         }
         Update: {
+          created_at?: string | null
           default_price?: number
           default_unit_id?: string | null
           deleted_at?: string | null
@@ -399,12 +420,21 @@ export type Database = {
           p_created_by: string
           p_customer_id: string
           p_deposit: number
+          p_is_frequent_customer?: boolean
           p_items: Json
           p_shop_id: string
           p_total_cost: number
-          p_is_frequent_customer?: boolean
         }
         Returns: Json
+      }
+      get_dashboard_stats: {
+        Args: { p_shop_id: string }
+        Returns: {
+          active_orders_count: number
+          total_customers_count: number
+          total_debt: number
+          total_revenue: number
+        }[]
       }
       get_table_names: {
         Args: never
@@ -413,7 +443,13 @@ export type Database = {
           table_schema: string
         }[]
       }
+      has_shop_role: {
+        Args: { p_allowed_roles: string[]; p_shop_id: string }
+        Returns: boolean
+      }
       is_system_admin: { Args: never; Returns: boolean }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       [_ in never]: never

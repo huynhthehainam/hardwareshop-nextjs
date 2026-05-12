@@ -23,11 +23,15 @@ import {
 interface OrderDetailWithProduct {
   id: string;
   order_id: string;
-  product_id: string;
+  product_id: string | null;
   quantity: number;
   unit_id: string | null;
   price: number;
+  total_cost: number;
   note?: string | null;
+  is_free_detail?: boolean | null;
+  free_product_name?: string | null;
+  free_unit_name?: string | null;
   product: {
     id: string;
     name: string;
@@ -62,20 +66,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   const { data: detailsData, error: detailsError } = await supabase
     .from('order_detail')
-    .select('id, order_id, product_id, quantity, unit_id, price, note, product:product_id(id, name)')
+    .select('id, order_id, product_id, quantity, unit_id, price, total_cost, note, is_free_detail, free_product_name, free_unit_name, product:product_id(id, name)')
     .eq('order_id', order.id);
 
   const details: OrderDetailWithProduct[] = (detailsData ?? []).map((d: unknown) => {
-    const item = d as {
-      id: string;
-      order_id: string;
-      product_id: string;
-      quantity: number;
-      unit_id: string;
-      price: number;
-      note: string;
-      product: unknown;
-    };
+    const item = d as any;
     return {
       ...item,
       product: Array.isArray(item.product) ? item.product[0] : item.product
@@ -232,13 +227,16 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               ) : (
                 details.map((detail) => {
                   const unit = units.find(u => u.id === detail.unit_id);
-                  const unitLabel = unit ? (t(`unit_${unit.name}` as any) === `unit_${unit.name}` ? unit.name : t(`unit_${unit.name}` as any)) : '';
+                  const unitLabel = unit ? (t(`unit_${unit.name}` as any) === `unit_${unit.name}` ? unit.name : t(`unit_${unit.name}` as any)) : (detail.free_unit_name || '');
                   
                   return (
                     <TableRow key={detail.id} className="hover:bg-[#F8FAFC] border-b border-[#F1F5F9]">
                       <TableCell className="px-8 py-4">
                         <div className="font-bold text-[#064E3B]">
-                          {detail.product?.name || t('unknownProduct')}
+                          {detail.is_free_detail 
+                            ? (detail.free_product_name || detail.product?.name || t('unknownProduct'))
+                            : (detail.product?.name || t('unknownProduct'))
+                          }
                         </div>
                       </TableCell>
                       <TableCell className="py-4 text-[#64748B] text-xs font-medium italic">
@@ -249,7 +247,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                       </TableCell>
                       <TableCell className="py-4 text-[#64748B] font-medium">{t('currencySymbol')}{detail.price.toLocaleString()}</TableCell>
                       <TableCell className="text-right px-8 py-4 font-extrabold text-[#064E3B]">
-                        {t('currencySymbol')}{(detail.quantity * detail.price).toLocaleString()}
+                        {t('currencySymbol')}{detail.total_cost.toLocaleString()}
                       </TableCell>
                     </TableRow>
                   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Command, 
   CommandEmpty, 
@@ -34,15 +34,46 @@ interface Props {
   onCreate?: (customer: Customer) => void;
 }
 
-export default function CustomerSearch({ customers, selectedId, onSelect, onCreate }: Props) {
+export default function CustomerSearch({ customers: initialCustomers, selectedId, onSelect, onCreate }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [customers, setCustomers] = useState<Customer[]>(initialCustomers || []);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const selectedCustomer = (customers || []).find(c => c?.id === selectedId);
+  const selectedCustomer = (customers || []).find(c => c?.id === selectedId) || 
+                          (initialCustomers || []).find(c => c?.id === selectedId);
+
+  useEffect(() => {
+    if (!open) return;
+    
+    const timer = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams({
+          limit: '20',
+          offset: '0',
+          search: search,
+        });
+        
+        const res = await fetch(`/api/customers?${params.toString()}`);
+        if (!res.ok) throw new Error(t('genericError'));
+        
+        const data = await res.json();
+        setCustomers(data.customers);
+      } catch (error) {
+        console.error('Error searching customers:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [search, open, t]);
 
   const handleCreate = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -79,9 +110,24 @@ export default function CustomerSearch({ customers, selectedId, onSelect, onCrea
     }
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (newOpen) {
+      setSearch('');
+    }
+  };
+
+  const handleCreateOpenChange = (newOpen: boolean) => {
+    setCreateOpen(newOpen);
+    if (newOpen) {
+      setNewName('');
+      setNewPhone('');
+    }
+  };
+
   return (
     <div className="flex gap-2">
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           <Button 
             variant="outline" 
@@ -109,47 +155,63 @@ export default function CustomerSearch({ customers, selectedId, onSelect, onCrea
           </Button>
         </DialogTrigger>
         <DialogContent className="p-0 border-none shadow-2xl rounded-3xl overflow-hidden max-w-md">
-          <Command className="rounded-none border-none">
+          <Command className="rounded-none border-none" shouldFilter={false}>
             <div className="flex items-center border-b border-[#F1F5F9] px-3">
               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
               <CommandInput 
                 placeholder={t('searchCustomersPlaceholder')} 
                 className="h-14 border-none focus:ring-0 text-base"
+                value={search}
+                onValueChange={setSearch}
               />
             </div>
             <CommandList className="max-h-[350px]">
-              <CommandEmpty className="py-10 text-center text-sm text-[#94A3B8]">
-                {t('noOrdersFound')}
-              </CommandEmpty>
-              <CommandGroup heading={t('customersManagementTitle')}>
-                {(customers || []).filter(Boolean).map((c) => (
-                  <CommandItem 
-                    key={c.id} 
-                    onSelect={() => { onSelect(c); setOpen(false); }}
-                    className="flex items-center justify-between py-3 px-4 cursor-pointer hover:bg-[#F8FAFC]"
-                  >
-                    <div className="flex items-center">
-                      <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center mr-3",
-                        selectedId === c.id ? "bg-[#059669] text-white" : "bg-[#F1F5F9] text-[#64748B]"
-                      )}>
-                        <User className="w-4 h-4" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-[#064E3B]">{c.name}</span>
-                        <span className="text-xs text-[#64748B]">{c.phone || t('noPhone')}</span>
-                      </div>
-                    </div>
-                    {selectedId === c.id && <Check className="h-5 w-5 text-[#059669]" />}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+              {isLoading ? (
+                <div className="py-10 text-center text-sm text-[#94A3B8] flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t('searching')}
+                </div>
+              ) : (
+                <>
+                  <CommandEmpty className="py-10 text-center text-sm text-[#94A3B8]">
+                    {t('noCustomersFound')}
+                  </CommandEmpty>
+                  <CommandGroup heading={t('customersManagementTitle')}>
+                    {(customers || []).filter(Boolean).map((c) => (
+                      <CommandItem 
+                        key={c.id} 
+                        value={c.id}
+                        onSelect={() => { onSelect(c); setOpen(false); }}
+                        className="flex items-center justify-between py-3 px-4 cursor-pointer hover:bg-[#F8FAFC]"
+                      >
+                        <div className="flex items-center">
+                          <div className={cn(
+                            "w-8 h-8 rounded-lg flex items-center justify-center mr-3",
+                            selectedId === c.id ? "bg-[#059669] text-white" : "bg-[#F1F5F9] text-[#64748B]"
+                          )}>
+                            <User className="w-4 h-4" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-[#064E3B]">{c.name}</span>
+                            <span className="text-xs text-[#64748B]">{c.phone || t('noPhone')}</span>
+                          </div>
+                        </div>
+                        {selectedId === c.id && <Check className="h-5 w-5 text-[#059669]" />}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </>
+              )}
               <CommandSeparator />
               <CommandGroup>
                 <CommandItem 
                   onSelect={() => {
                     setOpen(false);
-                    setTimeout(() => setCreateOpen(true), 150);
+                    setTimeout(() => {
+                      setCreateOpen(true);
+                      setNewName('');
+                      setNewPhone('');
+                    }, 150);
                   }} 
                   className="text-[#059669] font-bold py-4 px-4 cursor-pointer hover:bg-emerald-50"
                 >
@@ -162,7 +224,7 @@ export default function CustomerSearch({ customers, selectedId, onSelect, onCrea
         </DialogContent>
       </Dialog>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog open={createOpen} onOpenChange={handleCreateOpenChange}>
         <DialogTrigger asChild>
           <Button 
             type="button"

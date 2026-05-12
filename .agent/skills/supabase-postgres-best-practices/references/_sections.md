@@ -21,6 +21,7 @@ Take the examples below as pure demonstrative. Replace each section with the act
 ## 4. Schema Design (schema)
 **Impact:** HIGH
 **Description:** Table design, index strategies, partitioning, and data type selection. Foundation for long-term performance.
+**Mandatory:** Schema Synchronization (migration-sync) - All database changes must be tracked in migrations.
 
 ## 5. Concurrency & Locking (lock)
 **Impact:** MEDIUM-HIGH
