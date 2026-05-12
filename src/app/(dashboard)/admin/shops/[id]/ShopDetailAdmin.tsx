@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Boxes,
   Clock3,
+  Database,
   DollarSign,
   Image as ImageIcon,
   Loader2,
@@ -97,6 +98,8 @@ export default function ShopDetailAdmin() {
   const [submittingUser, setSubmittingUser] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [userFormData, setUserFormData] = useState({
     email: '',
     password: '',
@@ -214,6 +217,43 @@ export default function ShopDetailAdmin() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       toast.error(message);
+    } finally {
+      setSubmittingUser(false);
+    }
+  };
+
+  const handleRestore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restoreFile || !shopId) {
+      toast.error(t('errSelectFile'));
+      return;
+    }
+    setSubmittingUser(true);
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', restoreFile);
+
+      const response = await fetch(`/api/admin/shops/${shopId}/restore-sqlite`, {
+        method: 'POST',
+        body: formDataUpload,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) throw new Error(result.error || 'Failed to restore');
+
+      toast.success(t('restoreSuccess', {
+        customerCount: result.customerCount,
+        productCount: result.productCount,
+        orderCount: result.orderCount || 0
+      }));
+
+      setIsRestoreDialogOpen(false);
+      setRestoreFile(null);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.message || t('importError'));
     } finally {
       setSubmittingUser(false);
     }
@@ -339,93 +379,146 @@ export default function ShopDetailAdmin() {
           </div>
         </div>
 
-        <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="h-12 rounded-2xl bg-[#F97316] px-6 text-white shadow-lg shadow-[#F97316]/20 hover:bg-[#EA580C] cursor-pointer">
-              <UserPlus className="mr-2 h-5 w-5" />
-              {t('addUser')}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="rounded-[2rem] border-none p-0 sm:max-w-[460px]">
-            <DialogHeader className="border-b border-[#E2E8F0] px-6 py-5">
-              <DialogTitle className="text-2xl font-black text-[#064E3B]">
-                {t('addNewUser')}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAddUser} className="space-y-5 px-6 py-6">
-              <div className="space-y-2">
-                <Label className="text-sm font-bold text-[#475569]">
-                  <span className="flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    {t('userEmail')}
-                  </span>
-                </Label>
-                <Input
-                  type="email"
-                  value={userFormData.email}
-                  onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
-                  className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-bold text-[#475569]">
-                  <span className="flex items-center gap-2">
-                    <Lock className="h-4 w-4" />
-                    {t('userPassword')}
-                  </span>
-                </Label>
-                <Input
-                  type="password"
-                  value={userFormData.password}
-                  onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
-                  className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-bold text-[#475569]">
-                  <span className="flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4" />
-                    {t('userRole')}
-                  </span>
-                </Label>
-                <Select
-                  value={userFormData.role}
-                  onValueChange={(value: 'admin' | 'staff') =>
-                    setUserFormData({ ...userFormData, role: value })
-                  }
-                >
-                  <SelectTrigger className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]">
-                    <SelectValue placeholder={t('selectRole')} />
-                  </SelectTrigger>
-                  <SelectContent
-                    align="start"
-                    side="bottom"
-                    sideOffset={8}
-                    className="z-[60] min-w-[var(--radix-select-trigger-width)] rounded-xl border border-[#D9E5E0] bg-white shadow-xl"
+        <div className="flex flex-wrap gap-3">
+          <Dialog open={isRestoreDialogOpen} onOpenChange={setIsRestoreDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-12 rounded-2xl border-[#D9E5E0] bg-white px-6 text-[#475569] shadow-sm hover:bg-[#F8FAFC] cursor-pointer"
+              >
+                <Database className="mr-2 h-5 w-5" />
+                {t('restoreFromSqlite')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-[2rem] border-none p-0 sm:max-w-[460px]">
+              <DialogHeader className="border-b border-[#E2E8F0] px-6 py-5">
+                <DialogTitle className="text-2xl font-black text-[#064E3B]">
+                  {t('restoreFromSqlite')}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleRestore} className="space-y-5 px-6 py-6">
+                <div className="rounded-2xl bg-amber-50 p-4 text-sm font-medium text-amber-800 border border-amber-100">
+                  <p>{t('confirmRestoreShop')}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-[#475569]">
+                    {t('sqliteFile')}
+                  </Label>
+                  <Input
+                    type="file"
+                    accept=".db"
+                    onChange={(e) => setRestoreFile(e.target.files?.[0] || null)}
+                    className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC] cursor-pointer"
+                    required
+                  />
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    type="submit"
+                    disabled={submittingUser}
+                    className="h-12 w-full rounded-2xl bg-red-600 text-white shadow-md shadow-red-600/20 hover:bg-red-700 cursor-pointer"
                   >
-                    <SelectItem value="admin">{t('roleAdmin')}</SelectItem>
-                    <SelectItem value="staff">{t('roleStaff')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="submit"
-                  disabled={submittingUser}
-                  className="h-12 w-full rounded-2xl bg-[#059669] text-white shadow-md shadow-emerald-600/20 hover:bg-[#047857] cursor-pointer"
-                >
-                  {submittingUser ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    t('createAccount')
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                    {submittingUser ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      t('confirm')
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="h-12 rounded-2xl bg-[#F97316] px-6 text-white shadow-lg shadow-[#F97316]/20 hover:bg-[#EA580C] cursor-pointer">
+                <UserPlus className="mr-2 h-5 w-5" />
+                {t('addUser')}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-[2rem] border-none p-0 sm:max-w-[460px]">
+              <DialogHeader className="border-b border-[#E2E8F0] px-6 py-5">
+                <DialogTitle className="text-2xl font-black text-[#064E3B]">
+                  {t('addNewUser')}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleAddUser} className="space-y-5 px-6 py-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-[#475569]">
+                    <span className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      {t('userEmail')}
+                    </span>
+                  </Label>
+                  <Input
+                    type="email"
+                    value={userFormData.email}
+                    onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                    className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-[#475569]">
+                    <span className="flex items-center gap-2">
+                      <Lock className="h-4 w-4" />
+                      {t('userPassword')}
+                    </span>
+                  </Label>
+                  <Input
+                    type="password"
+                    value={userFormData.password}
+                    onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                    className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-[#475569]">
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4" />
+                      {t('userRole')}
+                    </span>
+                  </Label>
+                  <Select
+                    value={userFormData.role}
+                    onValueChange={(value: 'admin' | 'staff') =>
+                      setUserFormData({ ...userFormData, role: value })
+                    }
+                  >
+                    <SelectTrigger className="h-12 rounded-2xl border-[#D9E5E0] bg-[#F8FAFC]">
+                      <SelectValue placeholder={t('selectRole')} />
+                    </SelectTrigger>
+                    <SelectContent
+                      align="start"
+                      side="bottom"
+                      sideOffset={8}
+                      className="z-[60] min-w-[var(--radix-select-trigger-width)] rounded-xl border border-[#D9E5E0] bg-white shadow-xl"
+                    >
+                      <SelectItem value="admin">{t('roleAdmin')}</SelectItem>
+                      <SelectItem value="staff">{t('roleStaff')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <Button
+                    type="submit"
+                    disabled={submittingUser}
+                    className="h-12 w-full rounded-2xl bg-[#059669] text-white shadow-md shadow-emerald-600/20 hover:bg-[#047857] cursor-pointer"
+                  >
+                    {submittingUser ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      t('createAccount')
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <section className="overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(135deg,#F8FFFC_0%,#ECFDF5_55%,#FFF7ED_100%)] shadow-[0_18px_60px_rgba(15,23,42,0.08)]">

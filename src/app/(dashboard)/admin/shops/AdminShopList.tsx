@@ -190,10 +190,12 @@ export default function AdminShopList() {
 
       if (!response.ok) throw new Error(result.error || 'Failed to import');
 
-      toast.success(t('importSuccess', { 
+      toast.success(t('importSuccess', {
         customerCount: result.customerCount,
-        productCount: result.productCount 
+        productCount: result.productCount,
+        orderCount: result.orderCount || 0
       }));
+
       setIsImportDialogOpen(false);
       setImportFile(null);
       resetForm();

@@ -8,7 +8,9 @@ interface OrderRequestItem {
   quantity: number;
   unitId?: string;
   price: number;
+  totalCost: number;
   note?: string;
+  isFreeDetail?: boolean;
 }
 
 interface OrderRequestBody {
@@ -147,8 +149,10 @@ export async function POST(request: Request) {
       product_id: item.productId,
       quantity: item.quantity,
       price: item.price,
+      total_cost: item.totalCost,
       unit_id: (item.unitId && item.unitId.trim() !== '') ? item.unitId : null,
       note: item.note,
+      is_free_detail: item.isFreeDetail ?? false,
     }));
 
     const result = await createOrder(order, details);

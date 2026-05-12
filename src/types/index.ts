@@ -98,9 +98,13 @@ export interface OrderWithCustomer extends Order {
 export interface OrderDetail {
   id: string;
   order_id: string;
-  product_id: string;
+  product_id: string | null;
   quantity: number;
   unit_id: string | null;
   price: number;
+  total_cost: number;
   note?: string | null;
+  is_free_detail?: boolean | null;
+  free_product_name?: string | null;
+  free_unit_name?: string | null;
 }

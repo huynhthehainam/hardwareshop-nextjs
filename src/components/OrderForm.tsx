@@ -39,7 +39,9 @@ interface OrderItem {
   quantity: number;
   unitId: string;
   price: number;
+  totalCost: number;
   note?: string;
+  isFreeDetail?: boolean;
 }
 
 type OrderItemFieldValue = OrderItem[keyof OrderItem];
@@ -138,7 +140,7 @@ export default function OrderForm({
   }, []);
 
   const addItem = () => {
-    setItems([...items, { productId: '', quantity: 1, unitId: '', price: 0, note: '' }]);
+    setItems([...items, { productId: '', quantity: 1, unitId: '', price: 0, totalCost: 0, note: '', isFreeDetail: false }]);
   };
 
   const handleQuickAddConfirm = () => {
@@ -160,13 +162,16 @@ export default function OrderForm({
     const unit = (units || []).find(u => u?.id === product.default_unit_id);
     const unitLabel = unit ? getUnitLabel(unit) : '';
     const note = validRows.map(r => `${r.quantity}x${r.size}${unitLabel}`).join(';');
+    const price = getProductPrice(product);
 
     setItems([...items, {
       productId: quickAddProductId,
       quantity: totalQuantity,
       unitId: product.default_unit_id || '',
-      price: getProductPrice(product),
-      note: note
+      price: price,
+      totalCost: totalQuantity * price,
+      note: note,
+      isFreeDetail: false
     }]);
 
     setQuickAddOpen(false);
@@ -194,7 +199,14 @@ export default function OrderForm({
 
   const updateItem = (index: number, field: keyof OrderItem, value: OrderItemFieldValue) => {
     const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
+    const updatedItem = { ...newItems[index], [field]: value };
+    
+    // Recalculate totalCost if quantity or price changed
+    if (field === 'quantity' || field === 'price') {
+      updatedItem.totalCost = Number(updatedItem.quantity || 0) * Number(updatedItem.price || 0);
+    }
+    
+    newItems[index] = updatedItem;
     setItems(newItems);
   };
 
@@ -215,16 +227,22 @@ export default function OrderForm({
   const handleProductChange = (index: number, productId: string) => {
     const product = (products || []).find((candidate) => candidate?.id === productId);
     const newItems = [...items];
+    const price = product ? getProductPrice(product) : newItems[index]?.price ?? 0;
+    const isFree = newItems[index]?.isFreeDetail ?? false;
+    const effectivePrice = isFree ? 0 : price;
+    
     newItems[index] = {
       ...newItems[index],
       productId,
       unitId: product?.default_unit_id ?? newItems[index]?.unitId ?? '',
-      price: product ? getProductPrice(product) : newItems[index]?.price ?? 0,
+      price: effectivePrice,
+      totalCost: (newItems[index]?.quantity ?? 1) * effectivePrice,
+      isFreeDetail: isFree,
     };
     setItems(newItems);
   };
 
-  const totalCost = items.reduce((acc, item) => acc + (item.quantity * (item.price || 0)), 0);
+  const totalCost = items.reduce((acc, item) => acc + (item.totalCost || 0), 0);
   const currentCustomer = (customers || []).find(c => c?.id === customerId);
   const oldDebt = currentCustomer?.debt || 0;
   const newDebt = oldDebt + totalCost - deposit;
@@ -297,7 +315,9 @@ export default function OrderForm({
           quantity: item.quantity,
           unit_id: item.unitId,
           price: item.price,
+          total_cost: item.totalCost,
           note: item.note,
+          is_free_detail: item.isFreeDetail || false,
           product: { name: (products || []).find(p => p?.id === item.productId)?.name || '' }
         }));
 
@@ -323,7 +343,21 @@ export default function OrderForm({
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId, items, deposit, totalCost, isFrequentCustomer }),
+        body: JSON.stringify({ 
+          customerId, 
+          items: items.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            unitId: item.unitId,
+            price: item.price,
+            totalCost: item.totalCost,
+            note: item.note,
+            isFreeDetail: item.isFreeDetail || false,
+          })), 
+          deposit, 
+          totalCost, 
+          isFrequentCustomer 
+        }),
       });
       
       if (response.ok) {
@@ -514,6 +548,7 @@ export default function OrderForm({
                       <TableHead className="px-8 py-4 font-bold text-[#475569]">{t('product')}</TableHead>
                       <TableHead className="w-24 py-4 font-bold text-[#475569]">{t('qty')}</TableHead>
                       <TableHead className="w-36 py-4 font-bold text-[#475569]">{t('unit')}</TableHead>
+                      <TableHead className="w-24 py-4 font-bold text-[#475569] text-center">{t('free') || 'Free'}</TableHead>
                       <TableHead className="w-44 py-4 font-bold text-[#475569]">{t('price')}</TableHead>
                       <TableHead className="w-48 text-right px-8 py-4 font-bold text-[#475569]">{t('subtotal')}</TableHead>
                       <TableHead className="w-16 py-4"></TableHead>
@@ -562,17 +597,38 @@ export default function OrderForm({
                             </SelectContent>
                           </Select>
                         </TableCell>
+                        <TableCell className="py-4 text-center">
+                          <Checkbox 
+                            checked={item.isFreeDetail} 
+                            onCheckedChange={(checked) => {
+                              const isFree = !!checked;
+                              const newItems = [...items];
+                              const basePrice = products.find(p => p.id === item.productId) ? getProductPrice(products.find(p => p.id === item.productId)!) : newItems[index].price;
+                              const effectivePrice = isFree ? 0 : basePrice;
+                              
+                              newItems[index] = { 
+                                ...newItems[index], 
+                                isFreeDetail: isFree,
+                                price: effectivePrice,
+                                totalCost: newItems[index].quantity * effectivePrice
+                              };
+                              setItems(newItems);
+                            }}
+                            className="w-5 h-5 rounded-md border-[#059669] data-[state=checked]:bg-[#059669]"
+                          />
+                        </TableCell>
                         <TableCell className="py-4">
                           <MoneyInput 
                             className="rounded-xl border-[#E2E8F0] focus:ring-[#059669]/10"
                             value={item.price} 
+                            disabled={item.isFreeDetail}
                             onValueChange={(val) => updateItem(index, 'price', val ?? 0)}
                             currencySymbol={t('currencySymbol')}
                             symbolClassName="text-[#94A3B8]"
                           />
                         </TableCell>
                         <TableCell className="text-right px-8 py-4 font-extrabold text-[#064E3B]">
-                          {t('currencySymbol')}{(item.quantity * item.price).toLocaleString()}
+                          {t('currencySymbol')}{item.totalCost.toLocaleString()}
                         </TableCell>
                         <TableCell className="py-4 text-center">
                           <Button 
@@ -589,7 +645,7 @@ export default function OrderForm({
                     ))}
                     {items.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-20 text-[#94A3B8]">
+                        <TableCell colSpan={7} className="text-center py-20 text-[#94A3B8]">
                           <div className="flex flex-col items-center">
                             <Package className="w-12 h-12 mb-4 opacity-20" />
                             <p className="font-medium">{t('noItemsTitle')}</p>

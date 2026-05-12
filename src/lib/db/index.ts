@@ -210,8 +210,10 @@ export async function createOrder(order: Partial<Order>, details: Partial<OrderD
       product_id: d.product_id,
       quantity: d.quantity,
       price: d.price,
+      total_cost: d.total_cost,
       unit_id: d.unit_id,
-      note: d.note
+      note: d.note,
+      is_free_detail: d.is_free_detail
     })),
     p_is_frequent_customer: order.is_frequent_customer ?? false
   });

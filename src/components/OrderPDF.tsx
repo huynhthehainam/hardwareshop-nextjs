@@ -230,7 +230,7 @@ export async function generateOrderPdf({
         detail.note || '-',
         qtyText,
         formatCurrency(detail.price),
-        formatCurrency(detail.quantity * detail.price),
+        formatCurrency(detail.total_cost),
       ];
     }),
     styles: {
