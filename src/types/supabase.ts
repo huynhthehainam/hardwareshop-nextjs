@@ -120,7 +120,7 @@ export type Database = {
           customer_id?: string
           debt_after_order?: number | null
           deleted_at?: string | null
-          deleted_by?: string | null\
+          deleted_by?: string | null
           deposit?: number | null
           id?: string
           is_frequent_customer?: boolean
@@ -231,7 +231,7 @@ export type Database = {
           frequent_customer_sale_off?: number | null
           id?: string
           image_url?: string | null
-          mass?: number | null\
+          mass?: number | null
           mass_price?: number | null
           name: string
           price_for_frequent_customer?: number | null
@@ -437,7 +437,7 @@ export type Database = {
         }[]
       }
       get_table_names: {
-        Args: never\
+        Args: never
         Returns: {
           table_name: string
           table_schema: string
@@ -531,7 +531,7 @@ export type TablesUpdate<
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U\
+      Update: infer U
     }
     ? U
     : never

@@ -131,7 +131,6 @@ export const en = {
     unit_sheet: "sheet",
     unit_liter: "liter",
     unit_tael: "100g",
-    unit_time: "lần",
     qty: "Qty",
     price: "Price",
     subtotal: "Subtotal",
