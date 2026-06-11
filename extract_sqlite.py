@@ -14,10 +14,7 @@ def extract_data(db_path):
         
         tables = {
             'customers': "SELECT id, name, information as phone, dept as debt FROM Customers",
-            'products': "SELECT id, name, unit, pricePerMass as pricePerMass, mass, type, priceForCustomer as priceForCustomer, priceForWorker as priceForWorker FROM Warehouses",
-            'invoices': "SELECT id, created, dept, deposit, deptBefore as deptBefore, customer_id as customerId FROM Invoices",
-            'invoice_details': "SELECT id, name, quantity, unit, price, notice, invoice_id as invoiceId, totalCost as totalCost FROM InvoiceDetails",
-            'dept_histories': "SELECT id, created, cash, reason, customer_id as customerId FROM DeptHistories"
+            'products': "SELECT id, name, unit, pricePerMass as pricePerMass, mass, type, priceForCustomer as priceForCustomer, priceForWorker as priceForWorker FROM Warehouses"
         }
         
         data = {}

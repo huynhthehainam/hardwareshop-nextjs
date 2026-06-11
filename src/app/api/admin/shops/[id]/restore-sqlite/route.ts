@@ -76,10 +76,7 @@ export async function POST(
       const processedData = JSON.parse(stdout);
       data = {
         customers: processedData.customers || [],
-        products: processedData.products || [],
-        invoices: processedData.invoices || [],
-        invoice_details: processedData.invoice_details || [],
-        dept_histories: processedData.dept_histories || []
+        products: processedData.products || []
       } as any;
     } finally {
       unlinkSync(tempPath);

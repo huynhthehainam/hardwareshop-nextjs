@@ -192,8 +192,7 @@ export default function AdminShopList() {
 
       toast.success(t('importSuccess', {
         customerCount: result.customerCount,
-        productCount: result.productCount,
-        orderCount: result.orderCount || 0
+        productCount: result.productCount
       }));
 
       setIsImportDialogOpen(false);

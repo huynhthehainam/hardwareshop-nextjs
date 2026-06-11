@@ -3,15 +3,11 @@ import { SupabaseClient } from '@supabase/supabase-js';
 export interface SQLiteImportData {
   customers: any[];
   products: any[];
-  invoices?: any[];
-  invoice_details?: any[];
-  dept_histories?: any[];
 }
 
 export interface ImportResult {
   customerCount: number;
   productCount: number;
-  orderCount: number;
 }
 
 const BATCH_SIZE = 100;
@@ -144,94 +140,8 @@ export async function seedShopFromSQLite(
     }
   }
 
-  // 6. Seed Orders from Invoices
-  const orderMap: Record<number, string> = {}; // SQLite Invoice ID -> Supabase Order ID
-  let orderCount = 0;
-  if (data.invoices && data.invoices.length > 0) {
-    orderCount = data.invoices.length;
-    for (let i = 0; i < data.invoices.length; i += BATCH_SIZE) {
-      const batch = data.invoices.slice(i, i + BATCH_SIZE);
-      const ordersToInsert = batch.map((inv: any) => {
-        const totalCost = (Number(inv.dept) - Number(inv.deptBefore)) + Number(inv.deposit);
-        return {
-          shop_id: shopId,
-          customer_id: customerMap[inv.customerId],
-          deposit: Number(inv.deposit) || 0,
-          total_cost: totalCost,
-          debt_after_order: Number(inv.dept) || 0,
-          created_at: inv.created,
-        };
-      });
-
-      const { data: insertedOrders, error: orderError } = await supabase
-        .from('order')
-        .insert(ordersToInsert)
-        .select();
-      
-      if (orderError) throw orderError;
-      insertedOrders?.forEach((o, index) => {
-        orderMap[batch[index].id] = o.id;
-      });
-    }
-  }
-
-  // 7. Seed Order Details from InvoiceDetails
-  if (data.invoice_details && data.invoice_details.length > 0) {
-    for (let i = 0; i < data.invoice_details.length; i += BATCH_SIZE) {
-      const batch = data.invoice_details.slice(i, i + BATCH_SIZE);
-      const detailsToInsert = batch.map((det: any) => {
-        const productId = productNameMap[det.name];
-        const normalizedUnit = normalizeUnit(det.unit);
-        const unitId = unitMap[normalizedUnit];
-        
-        const isFreeDetail = !productId || !unitId;
-        console.log('Processing detail:', det.name, '-> productId:', productId, 'unit:', det.unit, 'normalizedUnit:', normalizedUnit, 'unitId:', unitId, 'totalCost:', det.totalCost);
-        return {
-          order_id: orderMap[det.invoiceId],
-          product_id: isFreeDetail ? null : productId,
-          quantity: Number(det.quantity) || 0,
-          unit_id: isFreeDetail ? null : unitId,
-          price: Number(det.price) || 0,
-          total_cost: Number(det.totalCost) > 0 ? Number(det.totalCost) : (Number(det.price) * Number(det.quantity)),
-          note: det.notice || '',
-          free_product_name: isFreeDetail ? det.name : null,
-          free_unit_name: isFreeDetail ? det.unit : null,
-          is_free_detail: isFreeDetail
-        };
-      }).filter((d: any) => d.order_id);
-
-      if (detailsToInsert.length > 0) {
-        const { error: detailError } = await supabase
-          .from('order_detail')
-          .insert(detailsToInsert);
-        
-        if (detailError) throw detailError;
-      }
-    }
-  }
-
-  // 8. Seed non-purchase Debt History
-  if (data.dept_histories && data.dept_histories.length > 0) {
-    const historiesToInsert = data.dept_histories
-      .filter((h: any) => h.reason !== 'Mua hàng')
-      .map((h: any) => ({
-        customer_id: customerMap[h.customer_id],
-        change_amount: Number(h.cash) || 0,
-        reason_key: 'manual_adjustment',
-        reason_params: { note: h.reason },
-        created_at: h.created
-      }))
-      .filter((h: any) => h.customer_id);
-
-    for (let i = 0; i < historiesToInsert.length; i += BATCH_SIZE) {
-      const batch = historiesToInsert.slice(i, i + BATCH_SIZE);
-      await supabase.from('customer_debt_history').insert(batch);
-    }
-  }
-
   return {
     customerCount: data.customers.length,
-    productCount: data.products.length,
-    orderCount
+    productCount: data.products.length
   };
 }

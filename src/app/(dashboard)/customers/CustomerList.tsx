@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, ChangeEvent, FormEvent, useEffect, useRef, useCallback } from 'react';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -40,27 +40,27 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
   const [editOpen, setEditOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [debtDialogOpen, setDebtDialogOpen] = useState(false);
-  
+
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [customerToAdjust, setCustomerToAdjust] = useState<Customer | null>(null);
-  
+
   const [adjustmentType, setAdjustmentType] = useState<'payment' | 'add'>('payment');
   const [adjustmentAmount, setAdjustmentAmount] = useState<number | null>(null);
   const [adjustmentReason, setAdjustmentReason] = useState('');
-  
+
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
 
   const observer = useRef<IntersectionObserver | null>(null);
-  
+
   const loadMore = async (resetSearch = false) => {
     if (isLoading) return;
     setIsLoading(true);
-    
+
     const currentOffset = resetSearch ? 0 : offset;
-    
+
     try {
       const params = new URLSearchParams({
         limit: LIMIT.toString(),
@@ -68,13 +68,13 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
         search: search,
         hasDebt: showOnlyDebt.toString()
       });
-      
+
       const res = await fetch(`/api/customers?${params.toString()}`);
       if (!res.ok) throw new Error(t('genericError'));
-      
+
       const data = await res.json();
       const newCustomers = data.customers;
-      
+
       if (resetSearch) {
         setCustomers(newCustomers);
         setOffset(newCustomers.length);
@@ -82,7 +82,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
         setCustomers(prev => [...prev, ...newCustomers]);
         setOffset(prev => prev + newCustomers.length);
       }
-      
+
       setHasMore(newCustomers.length === LIMIT);
     } catch (error) {
       console.error('Error loading more customers:', error);
@@ -94,13 +94,13 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
   const lastElementRef = useCallback((node: HTMLDivElement | null) => {
     if (isLoading) return;
     if (observer.current) observer.current.disconnect();
-    
+
     observer.current = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting && hasMore) {
         loadMore();
       }
     });
-    
+
     if (node) observer.current.observe(node);
   }, [isLoading, hasMore, offset, search, showOnlyDebt]);
 
@@ -126,10 +126,10 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
         search: search, // Keep current search filter
         hasDebt: mode === 'debt' ? 'true' : 'false'
       });
-      
+
       const res = await fetch(`/api/customers?${params.toString()}`);
       if (!res.ok) throw new Error(t('genericError'));
-      
+
       const data = await res.json();
       const customersToPrint = data.customers;
 
@@ -213,7 +213,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
   const handleAdjustDebt = async (e: FormEvent) => {
     e.preventDefault();
     if (!customerToAdjust || !adjustmentAmount) return;
-    
+
     setIsAdjusting(true);
     // Negative change if payment, positive if adding debt
     const finalAmount = adjustmentType === 'payment' ? -adjustmentAmount : adjustmentAmount;
@@ -222,15 +222,15 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
       const res = await fetch(`/api/customers/${customerToAdjust.id}/adjust-debt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           amount: finalAmount,
           reasonKey: 'manual_adjustment',
           reasonParams: { note: adjustmentReason }
         }),
       });
-      
+
       if (!res.ok) throw new Error(t('debtAdjustFailed'));
-      
+
       toast.success(t('debtAdjustedSuccessfully'));
       setDebtDialogOpen(false);
       setCustomerToAdjust(null);
@@ -256,15 +256,15 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
             <Printer className="w-5 h-5 mr-2" />
             {t('printAll')}
           </Button>
-          
+
           <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
             <DialogContent className="rounded-3xl border-none shadow-2xl max-w-sm">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black text-slate-900">{t('printAll')}</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="h-16 rounded-2xl border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 justify-start px-6 transition-all"
                   onClick={() => handlePrint('all')}
                 >
@@ -273,8 +273,8 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                     <p className="font-bold">{t('printAllOption')}</p>
                   </div>
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="h-16 rounded-2xl border-slate-200 hover:border-orange-500 hover:bg-orange-50 hover:text-orange-700 justify-start px-6 transition-all"
                   onClick={() => handlePrint('debt')}
                 >
@@ -355,7 +355,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                 <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className="rounded-xl border-slate-200 text-slate-600 h-12 px-6">
                   {t('cancel')}
                 </Button>
-                <Button 
+                <Button
                   onClick={handleDeleteCustomer}
                   disabled={isDeleting}
                   className="rounded-xl bg-red-600 hover:bg-red-700 text-white h-12 px-8 shadow-lg shadow-red-600/20"
@@ -374,7 +374,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                 </div>
                 <DialogTitle className="text-2xl font-black text-slate-900">{t('adjustDebt')}</DialogTitle>
               </DialogHeader>
-              
+
               <form onSubmit={handleAdjustDebt} className="space-y-6 pt-2">
                 {customerToAdjust && (
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-2">
@@ -389,8 +389,8 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
 
                 <div className="space-y-3">
                   <Label className="text-sm font-bold text-slate-700">{t('adjustmentType')}</Label>
-                  <Select 
-                    value={adjustmentType} 
+                  <Select
+                    value={adjustmentType}
                     onValueChange={(v: any) => setAdjustmentType(v)}
                   >
                     <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-semibold">
@@ -407,9 +407,9 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-bold text-slate-700">{t('adjustmentAmount')}</Label>
                     {customerToAdjust && customerToAdjust.debt > 0 && (
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
+                      <Button
+                        type="button"
+                        variant="ghost"
                         size="sm"
                         onClick={() => {
                           setAdjustmentType('payment');
@@ -421,8 +421,8 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                       </Button>
                     )}
                   </div>
-                  <MoneyInput 
-                    value={adjustmentAmount} 
+                  <MoneyInput
+                    value={adjustmentAmount}
                     onValueChange={setAdjustmentAmount}
                     currencySymbol={t('currencySymbol')}
                     placeholder="0"
@@ -433,7 +433,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
 
                 <div className="space-y-3">
                   <Label className="text-sm font-bold text-slate-700">{t('adjustmentReason')}</Label>
-                  <Textarea 
+                  <Textarea
                     value={adjustmentReason}
                     onChange={(e) => setAdjustmentReason(e.target.value)}
                     placeholder={t('notePlaceholder')}
@@ -442,22 +442,21 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                 </div>
 
                 <DialogFooter className="gap-3 pt-2">
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
+                  <Button
+                    type="button"
+                    variant="ghost"
                     onClick={() => setDebtDialogOpen(false)}
                     className="rounded-xl text-slate-500 font-bold h-12"
                   >
                     {t('cancel')}
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={isAdjusting || !adjustmentAmount}
-                    className={`rounded-xl h-12 px-8 font-black shadow-lg transition-all ${
-                      adjustmentType === 'payment' 
-                        ? 'bg-[#059669] hover:bg-[#047857] shadow-emerald-600/20' 
-                        : 'bg-red-600 hover:bg-red-700 shadow-red-600/20'
-                    }`}
+                    className={`rounded-xl h-12 px-8 font-black shadow-lg transition-all ${adjustmentType === 'payment'
+                      ? 'bg-[#059669] hover:bg-[#047857] shadow-emerald-600/20'
+                      : 'bg-red-600 hover:bg-red-700 shadow-red-600/20'
+                      }`}
                   >
                     {isAdjusting ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -471,7 +470,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
           </Dialog>
         </div>
       </div>
-      
+
       <div className="flex flex-col md:flex-row md:items-center gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#94A3B8]" />
@@ -486,11 +485,10 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
           type="button"
           variant="outline"
           onClick={() => setShowOnlyDebt(!showOnlyDebt)}
-          className={`h-14 px-6 rounded-2xl border-none shadow-sm transition-all font-bold ${
-            showOnlyDebt 
-              ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' 
-              : 'bg-white text-[#64748B] hover:bg-slate-50'
-          }`}
+          className={`h-14 px-6 rounded-2xl border-none shadow-sm transition-all font-bold ${showOnlyDebt
+            ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+            : 'bg-white text-[#64748B] hover:bg-slate-50'
+            }`}
         >
           <DollarSign className={`w-5 h-5 mr-2 ${showOnlyDebt ? 'animate-pulse' : ''}`} />
           {t('showOnlyDebt')}
@@ -533,7 +531,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                             <div>
                               <p className="font-bold text-[#064E3B] text-lg leading-tight">{customer.name}</p>
                               <p className="text-xs font-semibold text-[#059669] uppercase tracking-widest mt-1">{t('idLabel')}: {customer.id.slice(0, 8)}</p>
-                              </div>                          </div>
+                            </div>                          </div>
                         </TableCell>
                         <TableCell className="px-6 py-6">
                           <div className="flex items-center space-x-2 text-[#475569] font-bold">
@@ -550,9 +548,9 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                         </TableCell>
                         <TableCell className="px-6 py-6 text-right">
                           <div className="flex justify-end gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="size-9 text-orange-600 hover:bg-orange-50 hover:text-orange-700 rounded-xl transition-all duration-200"
                               onClick={() => {
                                 setCustomerToAdjust(customer);
@@ -562,10 +560,10 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                             >
                               <Banknote className="size-4.5" />
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              asChild 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              asChild
+                              size="icon"
                               className="size-9 text-[#059669] hover:bg-emerald-50 hover:text-[#047857] rounded-xl transition-all duration-200"
                               title={t('viewDetails')}
                             >
@@ -573,10 +571,10 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                                 <Eye className="size-4.5" />
                               </Link>
                             </Button>
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
                               className="size-9 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-xl transition-all duration-200"
                               onClick={() => {
                                 setEditingCustomer(customer);
@@ -586,10 +584,10 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                             >
                               <Edit className="size-4.5" />
                             </Button>
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
                               className="size-9 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-xl transition-all duration-200"
                               onClick={() => {
                                 setCustomerToDelete(customer);
@@ -616,9 +614,7 @@ export default function CustomerList({ initialCustomers }: { initialCustomers: C
                 <span>{t('processing')}</span>
               </div>
             )}
-            {!hasMore && customers.length > 0 && (
-              <p className="text-sm text-[#94A3B8] font-bold uppercase tracking-widest">{t('allRightsReserved')}</p>
-            )}
+
           </div>
         </CardContent>
       </Card>

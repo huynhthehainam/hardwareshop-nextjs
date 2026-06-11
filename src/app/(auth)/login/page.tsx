@@ -155,7 +155,7 @@ export default function LoginPage() {
       </Card>
       
       <p className="mt-8 text-[#64748B] text-sm">
-        &copy; 2026 {t('appName')}. {t('allRightsReserved')}
+        &copy; 2026 {t('appName')}.
       </p>
     </div>
   );
